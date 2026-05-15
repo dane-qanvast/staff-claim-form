@@ -809,20 +809,31 @@ function collectPdfAttachments() {
 function mergePdfAttachments(mainBuf, pdfAtts) {
   return loadPdfLib().then(function(PDFLib) {
     return PDFLib.PDFDocument.load(mainBuf).then(function(mainPdf) {
+      var pagesBefore = mainPdf.getPageCount();
+      var pagesAdded = 0;
+      var failed = [];
       var chain = Promise.resolve();
       pdfAtts.forEach(function(entry) {
         chain = chain.then(function() {
-          var attBuf = dataUrlToArrayBuffer(entry.att.dataUrl);
+          var attBuf;
+          try { attBuf = dataUrlToArrayBuffer(entry.att.dataUrl); }
+          catch (e) { failed.push({ name: entry.att.name || 'unnamed.pdf', reason: 'decode failed' }); return; }
           return PDFLib.PDFDocument.load(attBuf, { ignoreEncryption: true }).then(function(attPdf) {
+            var pageCount = attPdf.getPageCount();
             return mainPdf.copyPages(attPdf, attPdf.getPageIndices()).then(function(copied) {
               copied.forEach(function(p) { mainPdf.addPage(p); });
+              pagesAdded += pageCount;
             });
           }).catch(function(err) {
-            console.warn('Skipped PDF (' + (entry.att.name || '?') + '): ' + err.message);
+            var msg = (err && err.message) ? err.message : String(err);
+            console.warn('Could not merge PDF (' + (entry.att.name || '?') + '):', err);
+            failed.push({ name: entry.att.name || 'unnamed.pdf', reason: msg });
           });
         });
       });
-      return chain.then(function() { return mainPdf.save(); });
+      return chain.then(function() { return mainPdf.save(); }).then(function(bytes) {
+        return { bytes: bytes, failed: failed, pagesBefore: pagesBefore, pagesAdded: pagesAdded, attemptedCount: pdfAtts.length };
+      });
     });
   });
 }
@@ -1508,13 +1519,20 @@ function downloadClaimPDF() {
         resolve(filename);
         return;
       }
-      mergePdfAttachments(buffer, pdfAtts).then(function(finalBytes) {
-        downloadBlob(new Blob([finalBytes], { type: 'application/pdf' }), filename);
+      mergePdfAttachments(buffer, pdfAtts).then(function(result) {
+        downloadBlob(new Blob([result.bytes], { type: 'application/pdf' }), filename);
+        if (result.failed && result.failed.length > 0) {
+          var names = result.failed.map(function(f){ return f.name; }).join(', ');
+          var firstReason = result.failed[0].reason ? ' (' + result.failed[0].reason + ')' : '';
+          showToast('Could not embed ' + result.failed.length + ' PDF receipt(s): ' + names + firstReason, true);
+        } else {
+          showToast('PDF saved: ' + filename + ' - merged ' + result.pagesAdded + ' page(s) from ' + result.attemptedCount + ' attachment(s)');
+        }
         resolve(filename);
-      }).catch(function() {
-        // Fallback: download just the html2pdf output if merge fails
+      }).catch(function(err) {
+        // Whole merge step failed (likely pdf-lib could not load)
         downloadBlob(new Blob([buffer], { type: 'application/pdf' }), filename);
-        showToast('Could not merge PDF attachments - downloaded summary only', true);
+        showToast('Could not merge PDF attachments (' + (err && err.message ? err.message : 'unknown error') + ') - downloaded summary only', true);
         resolve(filename);
       });
     };
@@ -1645,7 +1663,7 @@ function showToast(msg, isError) {
   requestAnimationFrame(function(){ requestAnimationFrame(function(){ toast.classList.add('show'); }); });
   var dismiss = function(){ toast.classList.remove('show'); setTimeout(function(){ toast.remove(); }, 300); };
   toast.querySelector('.toast-close').addEventListener('click', dismiss);
-  setTimeout(dismiss, isError ? 6000 : 4000);
+  setTimeout(dismiss, isError ? 12000 : 4000);
 }
 
 function init() {
