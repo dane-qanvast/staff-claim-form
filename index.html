@@ -1330,8 +1330,10 @@ function downloadHTML() {
 }
 
 function printPreview() {
-  var frame = document.getElementById('previewFrame');
-  try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) { window.print(); }
+  showToast('Generating PDF...');
+  downloadClaimPDF().catch(function(err) {
+    showToast('Could not generate PDF: ' + (err && err.message ? err.message : 'unknown error'), true);
+  });
 }
 
 function generateHTML() { if (!validateForm()) return; openPreview(); }
@@ -1516,6 +1518,7 @@ function downloadClaimPDF() {
       var pdfAtts = collectPdfAttachments();
       if (pdfAtts.length === 0) {
         downloadBlob(new Blob([buffer], { type: 'application/pdf' }), filename);
+        showToast('PDF saved: ' + filename);
         resolve(filename);
         return;
       }
@@ -1589,10 +1592,9 @@ function sendEmail(recipients) {
 
   showToast('Generating PDF...');
   downloadClaimPDF().then(function(filename) {
-    showToast('PDF saved: ' + filename);
     openMail();
-  }).catch(function() {
-    showToast('Could not generate PDF - use Preview to download manually', true);
+  }).catch(function(err) {
+    showToast('Could not generate PDF (' + (err && err.message ? err.message : 'unknown error') + ')', true);
     openMail();
   });
 }
