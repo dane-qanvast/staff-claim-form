@@ -85,7 +85,7 @@
   .items-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
   .add-item-wrap { margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border); }
   .add-item-wrap .btn { width: 100%; }
-  #itemsList:not(:empty) { background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+  #itemsList:not(:empty) { background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 3px; overflow: clip; }
   .item-row { background: transparent; border-bottom: 1px solid var(--border); transition: background 0.15s; }
   .item-row:last-child { border-bottom: none; }
   .item-row.expanded { background: var(--bg-elev); }
@@ -200,10 +200,6 @@
   .contact-row.empty-row { background: transparent; border: 1px dashed var(--border); }
   .add-contact-btn { background: transparent; border: 1px dashed var(--border-focus); border-radius: 4px; padding: 10px; color: var(--text-dim); cursor: pointer; font-family: inherit; font-size: 13px; width: 100%; transition: all 0.15s; }
   .add-contact-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(5,165,148,0.04); }
-  @media (max-width: 560px) {
-    .contact-row { grid-template-columns: 1fr; gap: 6px; }
-    .contact-row .contact-default { padding: 0; }
-  }
 
   .picker-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; max-height: 320px; overflow-y: auto; }
   .picker-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; transition: all 0.15s; }
@@ -221,6 +217,167 @@
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: var(--border-focus); border-radius: 2px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--primary-dim); }
+
+  /* ============================================
+     INLINE FIELD VALIDATION (all viewports)
+     ============================================ */
+  .field.has-error > label { color: var(--danger); }
+  .field.has-error > input,
+  .field.has-error > select,
+  .field.has-error > .date-picker,
+  .field.has-error > .date-native,
+  .field.has-error .currency-row > input,
+  .field.has-error .currency-row > select { border-color: var(--danger); }
+  .field-error-msg { font-size: 11px; color: var(--danger); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+  .field-error-msg::before { content: '!'; display: inline-flex; width: 12px; height: 12px; align-items: center; justify-content: center; background: var(--danger); color: white; border-radius: 50%; font-size: 9px; font-weight: 700; }
+
+  /* Button spinner + disabled state */
+  .btn[disabled], .btn.is-loading { opacity: 0.7; cursor: not-allowed; pointer-events: none; }
+  .btn-spinner { width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: btn-spin 0.6s linear infinite; display: inline-block; flex-shrink: 0; }
+  @keyframes btn-spin { to { transform: rotate(360deg); } }
+
+  /* Confirm-armed state (two-tap remove on mobile) */
+  .confirm-armed { background: var(--danger) !important; color: white !important; border-color: var(--danger) !important; opacity: 1 !important; }
+
+  /* Native date inputs (hidden by default, shown on mobile) */
+  .date-native { background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; color: var(--text); font-size: 14px; font-family: inherit; width: 100%; display: none; transition: all 0.15s; min-height: 40px; }
+  .date-native:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+  .date-native::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
+  .date-native::-webkit-date-and-time-value { text-align: left; }
+
+  /* ============================================
+     MOBILE OPTIMIZATIONS (≤640px)
+     ============================================ */
+  @media (max-width: 640px) {
+    /* Bump all form inputs to 16px to prevent iOS Safari auto-zoom on focus */
+    input, select, textarea, .date-picker { font-size: 16px; }
+    .contact-row input { font-size: 16px; padding: 12px; }
+    .manual-rate-input input { font-size: 16px; width: auto; flex: 1; min-width: 100px; }
+    .currency-mode button { font-size: 13px; padding: 9px 10px; }
+
+    /* Add bottom padding to body so content clears the fixed action bar */
+    body { padding-bottom: 150px; }
+
+    /* Full-bleed sticky action bar pinned to viewport bottom */
+    .actions-bar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      margin-top: 0;
+      border-radius: 0;
+      border-left: none; border-right: none; border-bottom: none;
+      border-top: 1px solid var(--border);
+      padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+      flex-wrap: nowrap;
+    }
+    .actions-bar .totals {
+      width: 100%;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .actions-bar .totals-value { font-size: 22px; }
+    .actions-bar .actions-group {
+      width: 100%;
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+    .actions-bar .actions-group .btn {
+      flex: 1;
+      padding: 12px 4px;
+      font-size: 13px;
+      min-width: 0;
+    }
+
+    /* Email Contacts modal - touch-friendly contact row */
+    .contact-row {
+      grid-template-columns: 1fr;
+      gap: 12px;
+      padding: 14px;
+    }
+    .contact-row input { min-height: 46px; }
+    .contact-row .contact-default {
+      padding: 12px 4px;
+      font-size: 14px;
+      gap: 10px;
+      min-height: 48px;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      margin-top: 2px;
+    }
+    .contact-row .contact-default input[type="checkbox"] {
+      width: 22px;
+      height: 22px;
+    }
+    .contact-row .contact-remove {
+      background: rgba(239,68,68,0.08);
+      color: var(--danger);
+      padding: 14px;
+      font-size: 14px;
+      min-height: 48px;
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 3px;
+      margin-top: 4px;
+    }
+    .contact-row .contact-remove:hover,
+    .contact-row .contact-remove:active {
+      background: rgba(239,68,68,0.15);
+      color: var(--danger);
+    }
+
+    /* Swap to native date pickers on mobile */
+    .date-picker { display: none; }
+    .date-native { display: block; font-size: 16px; min-height: 48px; padding: 12px; }
+
+    /* Bigger touch targets in recipient picker (Send Email To) */
+    .picker-row { padding: 14px; min-height: 56px; }
+    .picker-row input[type="checkbox"] { width: 22px; height: 22px; }
+    .picker-row .picker-name { font-size: 15px; }
+    .picker-row .picker-email { font-size: 12px; }
+
+    /* Bottom-sheet style modals on mobile */
+    .modal-overlay { align-items: flex-end; padding: 0; }
+    .modal {
+      width: 100%;
+      max-width: none;
+      max-height: 88vh;
+      border-radius: 4px 4px 0 0;
+      border-bottom: none;
+      animation: sheet-up 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .modal::before {
+      content: '';
+      display: block;
+      width: 36px;
+      height: 4px;
+      background: var(--border-focus);
+      border-radius: 2px;
+      margin: 8px auto 4px;
+      flex-shrink: 0;
+    }
+    @keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+    /* Move toasts to bottom (above the fixed action bar) on mobile */
+    .toast-container {
+      top: auto;
+      right: 12px;
+      left: 12px;
+      bottom: calc(160px + env(safe-area-inset-bottom));
+    }
+    .toast { transform: translateY(20px); min-width: 0; max-width: none; }
+    .toast.show { transform: translateY(0); }
+
+    /* Sticky accordion summary when item is expanded */
+    .item-row.expanded .item-summary {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: var(--bg-elev);
+      box-shadow: 0 1px 0 var(--border);
+    }
+  }
 </style>
 </head>
 <body>
@@ -247,7 +404,7 @@
           <span class="dp-display placeholder">Select month</span>
           <svg class="cal-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </button>
-        <input type="hidden" id="claimMonth" required>
+        <input type="month" id="claimMonth" class="date-native" required>
       </div>
       <div class="field">
         <label>Date of Submission<span class="req">*</span></label>
@@ -255,7 +412,7 @@
           <span class="dp-display placeholder">Select date</span>
           <svg class="cal-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </button>
-        <input type="hidden" id="submissionDate" required>
+        <input type="date" id="submissionDate" class="date-native" required>
       </div>
       <div class="field">
         <label>Submitted By<span class="req">*</span></label>
@@ -502,9 +659,13 @@ function addItem() {
   setTimeout(function(){
     var newRow = document.querySelector('[data-item-id="' + id + '"]');
     if (!newRow) return;
-    newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    var vendor = newRow.querySelector('[data-field="vendor"]');
-    if (vendor) vendor.focus();
+    newRow.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    var mobile = isMobileViewport();
+    var focusDelay = mobile ? 350 : 60;
+    setTimeout(function() {
+      var vendor = newRow.querySelector('[data-field="vendor"]');
+      if (vendor) vendor.focus();
+    }, focusDelay);
   }, 60);
 }
 
@@ -888,7 +1049,7 @@ function render() {
     }
     var expandedClass = (expandedItemId === item.id) ? ' expanded' : '';
     var summarySpRef = getItemSummaryParts(item, idx);
-    html += '<div class="item-row' + expandedClass + '" data-item-id="' + item.id + '"><div class="item-summary" data-action="toggle-item"><span class="item-number">' + (idx+1) + '</span><div class="item-summary-main"><div class="item-summary-title' + (summarySpRef.hasVendor ? '' : ' is-empty') + '">' + summarySpRef.titleText + '</div><div class="item-summary-sub' + (summarySpRef.hasSub ? '' : ' is-empty') + '">' + summarySpRef.subText + '</div></div><div class="item-summary-amount' + (summarySpRef.hasAmount ? '' : ' is-empty') + '">' + summarySpRef.amountText + '</div><button type="button" class="item-remove" data-action="remove-item" aria-label="Remove">Remove</button><span class="item-toggle-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></div><div class="item-body"><div class="item-body-inner"><div class="item-grid"><div class="field"><label>Date</label><button type="button" class="date-picker" data-picker="date" data-item-date-id="' + item.id + '"><span class="dp-display placeholder">Select date</span><svg class="cal-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button></div><div class="field"><label>Vendor / Supplier<span class="req">*</span></label><input type="text" value="' + escapeHTML(item.vendor) + '" placeholder="e.g. Grab, Adobe" data-suggest="vendor" data-item-id="' + item.id + '" data-field="vendor" autocomplete="off" required><div class="suggestions" id="suggest-vendor-' + item.id + '"></div></div><div class="field"><label>Item Description<span class="req">*</span></label><input type="text" value="' + escapeHTML(item.description) + '" placeholder="What was purchased and why" data-suggest="description" data-item-id="' + item.id + '" data-field="description" autocomplete="off" required><div class="suggestions" id="suggest-description-' + item.id + '"></div></div><div class="field"><label>Type of Expense<span class="req">*</span></label><select data-field="category" required><option value="">Select category...</option>' + cats + '</select></div><div class="field field-amount"><label>Amount<span class="req">*</span></label><div class="currency-mode"><button type="button" class="' + (item.currencyMode === 'sgd' ? 'active' : '') + '" data-mode="sgd">SGD only</button><button type="button" class="' + (item.currencyMode === 'foreign' ? 'active' : '') + '" data-mode="foreign">Foreign currency</button></div>' + amountBlock + '</div><div class="field"><label>Receipts</label><div class="attach-dropzone" data-attach-zone><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>Drop, paste, or click to attach images / PDFs</span></div><input type="file" multiple accept="image/*,application/pdf" data-attach-input style="display:none;"><div class="attach-list">' + attHtml + '</div></div></div></div></div></div>';
+    html += '<div class="item-row' + expandedClass + '" data-item-id="' + item.id + '"><div class="item-summary" data-action="toggle-item"><span class="item-number">' + (idx+1) + '</span><div class="item-summary-main"><div class="item-summary-title' + (summarySpRef.hasVendor ? '' : ' is-empty') + '">' + summarySpRef.titleText + '</div><div class="item-summary-sub' + (summarySpRef.hasSub ? '' : ' is-empty') + '">' + summarySpRef.subText + '</div></div><div class="item-summary-amount' + (summarySpRef.hasAmount ? '' : ' is-empty') + '">' + summarySpRef.amountText + '</div><button type="button" class="item-remove" data-action="remove-item" aria-label="Remove">Remove</button><span class="item-toggle-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></div><div class="item-body"><div class="item-body-inner"><div class="item-grid"><div class="field"><label>Date</label><button type="button" class="date-picker" data-picker="date" data-item-date-id="' + item.id + '"><span class="dp-display placeholder">Select date</span><svg class="cal-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button><input type="date" class="date-native" data-item-date-id="' + item.id + '" value="' + (item.date || '') + '"></div><div class="field"><label>Vendor / Supplier<span class="req">*</span></label><input type="text" value="' + escapeHTML(item.vendor) + '" placeholder="e.g. Grab, Adobe" data-suggest="vendor" data-item-id="' + item.id + '" data-field="vendor" autocomplete="off" required><div class="suggestions" id="suggest-vendor-' + item.id + '"></div></div><div class="field"><label>Item Description<span class="req">*</span></label><input type="text" value="' + escapeHTML(item.description) + '" placeholder="What was purchased and why" data-suggest="description" data-item-id="' + item.id + '" data-field="description" autocomplete="off" required><div class="suggestions" id="suggest-description-' + item.id + '"></div></div><div class="field"><label>Type of Expense<span class="req">*</span></label><select data-field="category" required><option value="">Select category...</option>' + cats + '</select></div><div class="field field-amount"><label>Amount<span class="req">*</span></label><div class="currency-mode"><button type="button" class="' + (item.currencyMode === 'sgd' ? 'active' : '') + '" data-mode="sgd">SGD only</button><button type="button" class="' + (item.currencyMode === 'foreign' ? 'active' : '') + '" data-mode="foreign">Foreign currency</button></div>' + amountBlock + '</div><div class="field"><label>Receipts</label><div class="attach-dropzone" data-attach-zone><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>Drop, paste, or click to attach images / PDFs</span></div><input type="file" multiple accept="image/*,application/pdf" data-attach-input style="display:none;"><div class="attach-list">' + attHtml + '</div></div></div></div></div></div>';
   }
   list.innerHTML = html;
 
@@ -905,7 +1066,7 @@ function render() {
         });
       }
       var removeBtn = row.querySelector('[data-action="remove-item"]');
-      if (removeBtn) removeBtn.addEventListener('click', function(e){ e.stopPropagation(); removeItem(itemId); });
+      if (removeBtn) attachConfirmableClick(removeBtn, 'Remove', function() { removeItem(itemId); });
       var modeBtns = row.querySelectorAll('.currency-mode button[data-mode]');
       for (var b = 0; b < modeBtns.length; b++) {
         (function(btn){ btn.addEventListener('click', function(){ setCurrencyMode(itemId, btn.dataset.mode); }); })(modeBtns[b]);
@@ -969,6 +1130,7 @@ function render() {
   }
   setupAutocomplete();
   setupDatePickers();
+  setupNativeDates();
 }
 
 function setupAutocomplete() {
@@ -1281,24 +1443,149 @@ function buildOutputHTML() {
   return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Expense Claim - ' + escapeHTML(submittedBy) + ' - ' + formatMonth(month) + '</title><style>* { box-sizing: border-box; margin: 0; padding: 0; } body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1a1a1a; background: white; padding: 32px 16px; line-height: 1.5; } .page { max-width: 1000px; margin: 0 auto; background: white; padding: 48px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); border-radius: 4px; } .header { border-bottom: 3px solid #05a594; padding-bottom: 20px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; } .header-left { flex: 1; min-width: 0; } .header h1 { font-size: 26px; color: #024a42; margin-bottom: 4px; } .header .sub { color: #666; font-size: 16px; font-weight: 600; } .header-date { text-align: right; flex-shrink: 0; } .header-date .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 2px; } .header-date .value { font-size: 14px; font-weight: 600; color: #1f2937; } table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px; } th { background: #024a42; color: white; padding: 10px 12px; text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; } th:first-child { border-top-left-radius: 3px; } th:last-child { border-top-right-radius: 3px; text-align: right; } td { padding: 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; } tr:nth-child(even) td { background: #fafafa; } td.amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; } td.foreign { font-size: 11px; color: #6b7280; } .category-tag { display: inline-block; padding: 2px 8px; background: #c9eee9; color: #024a42; border-radius: 2px; font-size: 11px; font-weight: 500; } .totals-row td { background: #024a42 !important; color: white; font-weight: 700; font-size: 15px; padding: 14px 12px; } .totals-row td:first-child { border-bottom-left-radius: 3px; } .totals-row td:last-child { border-bottom-right-radius: 3px; text-align: right; } .rate-disclaimer { margin: -8px 0 24px; padding: 14px 16px; background: #fafafa; border: 1px solid #e5e7eb; border-radius: 3px; font-size: 11px; color: #4b5563; } .rate-disclaimer-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #024a42; margin-bottom: 6px; } .rate-disclaimer ul { list-style: none; padding: 0; margin: 0 0 6px 0; } .rate-disclaimer li { padding: 2px 0; font-variant-numeric: tabular-nums; } .rate-disclaimer .rate-source { color: #9ca3af; font-style: italic; } .rate-disclaimer a { color: #05a594; text-decoration: none; } .rate-disclaimer a:hover { text-decoration: underline; } .rate-disclaimer .rate-note { font-size: 10px; color: #9ca3af; font-style: italic; margin-top: 4px; padding-top: 6px; border-top: 1px dashed #e5e7eb; } .signature-section { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 48px; padding-top: 24px; } .sig-box { border-top: 1px solid #1a1a1a; padding-top: 8px; } .sig-box .role { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; } .sig-box .name { font-size: 14px; font-weight: 600; margin-top: 2px; } .footer { margin-top: 48px; text-align: center; font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 16px; } .att-badge { display: inline-block; margin-top: 4px; font-size: 10px; padding: 2px 6px; background: #effbf9; color: #024a42; border-radius: 2px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; } .receipt-page { page-break-before: always; max-width: 1000px; margin: 16px auto 0; background: white; padding: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); border-radius: 4px; } .receipt-page .receipt-header { font-size: 13px; font-weight: 600; color: #024a42; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #05a594; } .receipt-page .receipt-image { text-align: center; } .receipt-page .receipt-image img { max-width: 100%; max-height: 1100px; display: block; margin: 0 auto; } .receipt-page .receipt-pdf-card { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 56px 32px; background: #fafafa; border: 1px dashed #d1d5db; border-radius: 4px; margin: 32px auto; max-width: 480px; text-align: center; } .receipt-page .receipt-pdf-card .pdf-icon { color: #ef4444; } .receipt-page .receipt-pdf-card .pdf-filename { font-size: 16px; font-weight: 600; color: #1f2937; word-break: break-all; } .receipt-page .receipt-pdf-card .pdf-note { font-size: 12px; color: #6b7280; max-width: 340px; line-height: 1.5; } @media print { body { background: white; padding: 0; } .page, .receipt-page { box-shadow: none; padding: 24px; margin: 0 auto; } }</style></head><body><div class="page"><div class="header"><div class="header-left"><h1>Staff Claim</h1><div class="sub">' + escapeHTML(submittedBy) + ' - ' + formatMonth(month) + '</div></div><div class="header-date"><div class="label">Date of Submission</div><div class="value">' + formatDate(submissionDate) + '</div></div></div><table><thead><tr><th style="width:40px;">#</th><th style="width:90px;">Date</th><th>Vendor</th><th>Category</th><th>Description</th><th style="width:120px;">Amount (SGD)</th></tr></thead><tbody>' + itemRows + '<tr class="totals-row"><td colspan="5">TOTAL</td><td>SGD ' + total.toFixed(2) + '</td></tr></tbody></table>' + rateDisclaimer + '<div class="signature-section"><div class="sig-box"><div class="role">Submitted By</div><div class="name">' + escapeHTML(submittedBy) + '</div></div><div class="sig-box"><div class="role">Approved By</div><div class="name">' + escapeHTML(approvedBy) + '</div></div></div><div class="footer">Generated on ' + new Date().toLocaleString('en-GB') + '</div></div>' + receiptSections + '</body></html>';
 }
 
+function isMobileViewport() {
+  return window.matchMedia('(max-width: 640px)').matches;
+}
+
+function setFieldError(fieldEl, msg) {
+  if (!fieldEl) return;
+  fieldEl.classList.add('has-error');
+  var existing = fieldEl.querySelector(':scope > .field-error-msg');
+  if (!existing) {
+    var msgEl = document.createElement('div');
+    msgEl.className = 'field-error-msg';
+    msgEl.textContent = msg;
+    fieldEl.appendChild(msgEl);
+  } else {
+    existing.textContent = msg;
+  }
+}
+
+function clearFieldError(fieldEl) {
+  if (!fieldEl) return;
+  fieldEl.classList.remove('has-error');
+  var msg = fieldEl.querySelector(':scope > .field-error-msg');
+  if (msg) msg.remove();
+}
+
+function clearAllFieldErrors() {
+  var errs = document.querySelectorAll('.field.has-error');
+  for (var i = 0; i < errs.length; i++) clearFieldError(errs[i]);
+}
+
+function scrollFieldIntoView(fieldEl) {
+  if (!fieldEl) return;
+  fieldEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 function validateForm() {
+  clearAllFieldErrors();
   if (items.length === 0) { showToast('Please add at least one expense item', true); return false; }
-  if (!document.getElementById('submittedBy').value.trim()) { showToast('Please enter your name in Submitted By', true); return false; }
-  if (!document.getElementById('claimMonth').value) { showToast('Please select the claim month', true); return false; }
+
+  var errors = []; // { fieldEl, msg, itemId? }
+
+  // Header fields
+  var submittedByEl = document.getElementById('submittedBy');
+  if (!submittedByEl.value.trim()) errors.push({ fieldEl: submittedByEl.closest('.field'), msg: 'Required' });
+  var claimMonthEl = document.getElementById('claimMonth');
+  if (!claimMonthEl.value) errors.push({ fieldEl: claimMonthEl.closest('.field'), msg: 'Required' });
+
+  // Per-item validation
   for (var i = 0; i < items.length; i++) {
-    var item = items[i]; var num = i + 1;
-    var missing = null;
-    if (!item.vendor || !item.vendor.trim()) missing = 'Vendor / Supplier';
-    else if (!item.category) missing = 'Type of Expense';
-    else if (!item.description || !item.description.trim()) missing = 'Item Description';
-    else if (getItemSGD(item) <= 0) missing = 'Amount';
-    if (missing) {
-      if (expandedItemId !== item.id) setExpandedItem(item.id);
-      showToast('Item ' + num + ': ' + missing + ' is required', true);
-      return false;
+    var item = items[i];
+    var row = document.querySelector('[data-item-id="' + item.id + '"]');
+    if (!row) continue;
+    if (!item.vendor || !item.vendor.trim()) {
+      var el = row.querySelector('[data-field="vendor"]');
+      errors.push({ fieldEl: el && el.closest('.field'), msg: 'Required', itemId: item.id });
+    }
+    if (!item.category) {
+      var el2 = row.querySelector('[data-field="category"]');
+      errors.push({ fieldEl: el2 && el2.closest('.field'), msg: 'Required', itemId: item.id });
+    }
+    if (!item.description || !item.description.trim()) {
+      var el3 = row.querySelector('[data-field="description"]');
+      errors.push({ fieldEl: el3 && el3.closest('.field'), msg: 'Required', itemId: item.id });
+    }
+    if (getItemSGD(item) <= 0) {
+      var amountField = row.querySelector('.field-amount');
+      errors.push({ fieldEl: amountField, msg: 'Amount is required', itemId: item.id });
     }
   }
-  return true;
+
+  if (errors.length === 0) return true;
+
+  // Mark every error inline
+  for (var e = 0; e < errors.length; e++) {
+    setFieldError(errors[e].fieldEl, errors[e].msg);
+  }
+
+  // Scroll/expand to the first one
+  var first = errors[0];
+  if (first.itemId && expandedItemId !== first.itemId) {
+    setExpandedItem(first.itemId);
+    setTimeout(function() { scrollFieldIntoView(first.fieldEl); }, 150);
+  } else {
+    scrollFieldIntoView(first.fieldEl);
+  }
+
+  var moreText = errors.length > 1 ? ' (+' + (errors.length - 1) + ' more)' : '';
+  showToast('Please fix the highlighted field' + (errors.length > 1 ? 's' : '') + moreText, true);
+  return false;
+}
+
+// Two-tap confirmable action (mobile only) - prevents accidental removals
+function attachConfirmableClick(btn, originalLabel, onConfirm) {
+  if (!btn) return;
+  var armed = false;
+  var armedTimer = null;
+  function disarm() {
+    armed = false;
+    btn.textContent = originalLabel;
+    btn.classList.remove('confirm-armed');
+    if (armedTimer) { clearTimeout(armedTimer); armedTimer = null; }
+  }
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (!isMobileViewport()) { onConfirm(); return; }
+    if (armed) { disarm(); onConfirm(); return; }
+    armed = true;
+    btn.textContent = 'Tap again to confirm';
+    btn.classList.add('confirm-armed');
+    if (armedTimer) clearTimeout(armedTimer);
+    armedTimer = setTimeout(disarm, 3000);
+  });
+}
+
+// Wire up native date inputs (mobile) - both header fields and per-item dates
+function setupNativeDates() {
+  var inputs = document.querySelectorAll('.date-native');
+  for (var i = 0; i < inputs.length; i++) {
+    var input = inputs[i];
+    if (input.dataset.dnAttached) continue;
+    input.dataset.dnAttached = '1';
+    (function(input) {
+      input.addEventListener('change', function(e) {
+        var value = e.target.value;
+        var itemIdAttr = input.dataset.itemDateId;
+        if (itemIdAttr) {
+          // Per-item date
+          var id = parseInt(itemIdAttr);
+          updateItem(id, 'date', value);
+          var picker = input.parentElement.querySelector('.date-picker[data-item-date-id="' + id + '"]');
+          if (picker) updatePickerDisplay(picker);
+        } else {
+          // Header field - sync desktop picker display, persist state
+          var picker = input.parentElement.querySelector('.date-picker');
+          if (picker) updatePickerDisplay(picker);
+          saveFormState();
+        }
+        // Clear field error if user fixed something
+        var fieldEl = input.closest('.field');
+        if (fieldEl && fieldEl.classList.contains('has-error')) clearFieldError(fieldEl);
+      });
+    })(input);
+  }
 }
 
 function openPreview() {
@@ -1330,9 +1617,22 @@ function downloadHTML() {
 }
 
 function printPreview() {
+  var btn = document.querySelector('[data-action="print-preview"]');
+  var orig = btn ? btn.innerHTML : null;
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('is-loading');
+    btn.innerHTML = '<span class="btn-spinner"></span><span>Generating...</span>';
+  }
   showToast('Generating PDF...');
   downloadClaimPDF().catch(function(err) {
     showToast('Could not generate PDF: ' + (err && err.message ? err.message : 'unknown error'), true);
+  }).then(function() {
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('is-loading');
+      btn.innerHTML = orig;
+    }
   });
 }
 
@@ -1384,7 +1684,7 @@ function renderContactList() {
         })(inputs[j]);
       }
       var removeBtn = row.querySelector('[data-contact-action="remove"]');
-      if (removeBtn) removeBtn.addEventListener('click', function(){
+      if (removeBtn) attachConfirmableClick(removeBtn, 'Remove', function() {
         contacts.splice(idx, 1);
         saveContacts();
         renderContactList();
@@ -1590,10 +1890,25 @@ function sendEmail(recipients) {
     showToast('Opening your email client...');
   };
 
+  var emailBtn = document.querySelector('[data-action="email-claim"]');
+  var previewBtn = document.querySelector('[data-action="view-html"]');
+  var origEmailHtml = emailBtn ? emailBtn.innerHTML : null;
+  var setLoading = function(loading) {
+    if (emailBtn) {
+      emailBtn.disabled = loading;
+      emailBtn.classList.toggle('is-loading', loading);
+      emailBtn.innerHTML = loading ? '<span class="btn-spinner"></span><span>Generating...</span>' : origEmailHtml;
+    }
+    if (previewBtn) previewBtn.disabled = loading;
+  };
+
   showToast('Generating PDF...');
+  setLoading(true);
   downloadClaimPDF().then(function(filename) {
+    setLoading(false);
     openMail();
   }).catch(function(err) {
+    setLoading(false);
     showToast('Could not generate PDF (' + (err && err.message ? err.message : 'unknown error') + ')', true);
     openMail();
   });
@@ -1763,6 +2078,17 @@ function init() {
 
   setupAutocomplete();
   setupDatePickers();
+  setupNativeDates();
+
+  // Clear field-level error state as soon as user starts fixing the field
+  document.addEventListener('input', function(e) {
+    var field = e.target.closest('.field.has-error');
+    if (field) clearFieldError(field);
+  }, true);
+  document.addEventListener('change', function(e) {
+    var field = e.target.closest('.field.has-error');
+    if (field) clearFieldError(field);
+  }, true);
 
   var restored = loadFormState();
   if (restored && items.length > 0) {
