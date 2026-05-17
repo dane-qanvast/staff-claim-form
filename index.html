@@ -462,6 +462,10 @@
     /* Extra bottom space in modal footer so the action buttons aren't hidden
        behind the mobile browser's native download notification bar */
     .modal-footer { padding-bottom: 32px; }
+    /* iOS Chrome/Edge/Firefox/Opera show a tall persistent "Download complete" banner (~100px)
+       that overlaps the buttons. Only kick in when the reminder is showing - that's the only
+       time a download has actually happened. */
+    html.ios-non-safari .modal-footer.has-reminder { padding-bottom: 110px; }
 
     /* Bigger expense item number circle on mobile - was 22px / 11px on desktop, hard to read on small screens */
     .item-number { width: 28px; height: 28px; font-size: 13px; }
@@ -1193,6 +1197,12 @@ var IS_IOS = (function() {
   // iPadOS 13+ reports as Mac; the touch check disambiguates
   return /iPad|iPhone|iPod/.test(ua) || (ua.indexOf('Mac') !== -1 && 'ontouchend' in document);
 })();
+
+// iOS non-Safari browsers (Chrome=CriOS, Edge=EdgiOS, Firefox=FxiOS, Opera=OPiOS) show a
+// persistent "Download complete" bar at the bottom of the page after downloads. It overlaps
+// modal-footer buttons, so we add extra bottom padding to clear it.
+var IS_IOS_NON_SAFARI = IS_IOS && /CriOS|EdgiOS|FxiOS|OPiOS/.test(navigator.userAgent || '');
+if (IS_IOS_NON_SAFARI) document.documentElement.classList.add('ios-non-safari');
 
 // Chrome detection - matches Chrome desktop, Android Chrome, and iOS Chrome (CriOS).
 // Excludes Edge, Opera, Samsung Browser etc. that also have "Chrome" in their UA. Used to
