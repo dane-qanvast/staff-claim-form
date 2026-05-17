@@ -505,12 +505,15 @@
 
     /* Chrome-recommendation liner: surfaced only when html.non-chrome is set (see JS). */
     html.non-chrome .chrome-recommend {
-      display: block;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
       font-size: 12px;
       line-height: 1.45;
       color: var(--text-mute);
       text-align: left;
     }
+    html.non-chrome .chrome-recommend-icon { flex-shrink: 0; margin-top: 2px; opacity: 0.85; }
     /* In the header, sit below the Email Contacts button on its own line */
     html.non-chrome .header-actions { flex-wrap: wrap; }
     html.non-chrome .header-actions .chrome-recommend { flex-basis: 100%; order: 99; padding: 4px 0 0; }
@@ -574,7 +577,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
         Email Contacts
       </button>
-      <span class="chrome-recommend">Chrome browser recommended to generate PDF and pre-composed email</span>
+      <span class="chrome-recommend"><svg class="chrome-recommend-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>Chrome browser recommended to generate PDF and pre-composed email.</span></span>
     </div>
   </div>
 
@@ -629,7 +632,7 @@
       <button class="btn btn-secondary" data-action="view-html">Preview</button>
       <button class="btn btn-primary" data-action="email-claim">Generate Email</button>
     </div>
-    <div class="chrome-recommend">Chrome browser recommended to generate PDF and pre-composed email</div>
+    <div class="chrome-recommend"><svg class="chrome-recommend-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>Chrome browser recommended to generate PDF and pre-composed email.</span></div>
   </div>
 </div>
 
