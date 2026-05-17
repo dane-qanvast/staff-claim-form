@@ -148,7 +148,7 @@
   .btn-primary:hover { background: var(--primary-btn-hover); transform: translateY(-1px); box-shadow: 0 4px 16px var(--primary-glow); }
   .btn-secondary { background: var(--bg-elev-2); border-color: var(--border); color: var(--text); }
   .btn-secondary:hover { border-color: var(--primary); color: var(--primary-hover); }
-  .actions-bar { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; padding: 20px 24px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; margin-top: 20px; position: sticky; bottom: 16px; backdrop-filter: blur(12px); box-shadow: var(--shadow); }
+  .actions-bar { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; padding: 20px 24px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; margin-top: 20px; position: sticky; bottom: 16px; z-index: 20; backdrop-filter: blur(12px); box-shadow: var(--shadow); }
   .totals { display: flex; align-items: baseline; gap: 12px; }
   .totals-label { color: var(--text-dim); font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; }
   .totals-value { font-size: 28px; font-weight: 700; color: #ffffff; font-variant-numeric: tabular-nums; }
@@ -156,6 +156,8 @@
   .helper-link { font-size: 11px; color: var(--text-mute); margin-top: 2px; }
   .helper-link a { color: var(--primary); text-decoration: none; }
   .helper-link a:hover { text-decoration: underline; }
+  /* Browser-recommendation liner: hidden by default, surfaced only on mobile when the user is NOT on Chrome */
+  .chrome-recommend { display: none; }
   .toast-container { position: fixed; top: 24px; right: 24px; display: flex; flex-direction: column; gap: 10px; z-index: 3000; pointer-events: none; max-width: calc(100vw - 48px); }
   .toast { background: var(--bg-elev); border: 1px solid var(--border); border-left: 3px solid var(--primary); color: var(--text); padding: 14px 14px 14px 16px; border-radius: 3px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 12px; min-width: 260px; max-width: 360px; pointer-events: auto; transform: translateX(calc(100% + 32px)); opacity: 0; transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s; }
   .toast.show { transform: translateX(0); opacity: 1; }
@@ -501,6 +503,20 @@
     .attach-dropzone .dropzone-label-desktop { display: none; }
     .attach-dropzone .dropzone-label-mobile { display: inline; font-size: 14px; }
 
+    /* Chrome-recommendation liner: surfaced only when html.non-chrome is set (see JS). */
+    html.non-chrome .chrome-recommend {
+      display: block;
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--text-mute);
+      text-align: center;
+    }
+    /* In the header, sit below the Email Contacts button on its own line */
+    html.non-chrome .header-actions { flex-wrap: wrap; }
+    html.non-chrome .header-actions .chrome-recommend { flex-basis: 100%; order: 99; padding: 4px 0 0; }
+    /* In the sticky action bar, sit below the buttons */
+    html.non-chrome .actions-bar .chrome-recommend { width: 100%; margin: 2px 0 0; }
+
     /* Move toasts to bottom (above the fixed action bar) on mobile.
        The action bar height on mobile is ~106px + safe-area-inset, so 118px puts the toast ~12px above it. */
     .toast-container {
@@ -558,6 +574,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
         Email Contacts
       </button>
+      <span class="chrome-recommend">Chrome browser recommended to generate PDF and pre-composed email</span>
     </div>
   </div>
 
@@ -612,6 +629,7 @@
       <button class="btn btn-secondary" data-action="view-html">Preview</button>
       <button class="btn btn-primary" data-action="email-claim">Generate Email</button>
     </div>
+    <div class="chrome-recommend">Chrome browser recommended to generate PDF and pre-composed email</div>
   </div>
 </div>
 
@@ -1172,6 +1190,16 @@ var IS_IOS = (function() {
   // iPadOS 13+ reports as Mac; the touch check disambiguates
   return /iPad|iPhone|iPod/.test(ua) || (ua.indexOf('Mac') !== -1 && 'ontouchend' in document);
 })();
+
+// Chrome detection - matches Chrome desktop, Android Chrome, and iOS Chrome (CriOS).
+// Excludes Edge, Opera, Samsung Browser etc. that also have "Chrome" in their UA. Used to
+// surface a "Chrome recommended" liner on mobile non-Chrome browsers where the PDF+mailto
+// flow is less smooth.
+var IS_CHROME = (function() {
+  var ua = navigator.userAgent || '';
+  return /Chrome|CriOS/.test(ua) && !/Edg|EdgA|EdgiOS|OPR|OPiOS|SamsungBrowser/.test(ua);
+})();
+if (!IS_CHROME) document.documentElement.classList.add('non-chrome');
 
 function downloadBlob(blob, filename) {
   // iOS: route through the Web Share API so users get a native "Save to Files / Mail / AirDrop" sheet
@@ -2149,9 +2177,14 @@ function downloadClaimPDF() {
 
     var finalize = function(buffer) {
       var pdfAtts = collectPdfAttachments();
+      // On iOS, the share sheet hides the toast while it's open. Use a directive message
+      // so users know which option to pick, and a longer duration so the toast is still
+      // on-screen after they dismiss the share sheet.
+      var savedMsg = IS_IOS ? 'Tap "Save to Files" to save the PDF' : 'PDF saved: ' + filename;
+      var savedDuration = IS_IOS ? 10000 : undefined;
       if (pdfAtts.length === 0) {
         downloadBlob(new Blob([buffer], { type: 'application/pdf' }), filename);
-        showToast('PDF saved: ' + filename);
+        showToast(savedMsg, false, savedDuration);
         resolve(filename);
         return;
       }
@@ -2161,8 +2194,11 @@ function downloadClaimPDF() {
           var names = result.failed.map(function(f){ return f.name; }).join(', ');
           var firstReason = result.failed[0].reason ? ' (' + result.failed[0].reason + ')' : '';
           showToast('Could not embed ' + result.failed.length + ' PDF receipt(s): ' + names + firstReason, true);
+        } else if (IS_IOS) {
+          // iOS: skip the merge details - the directive is more important right now
+          showToast(savedMsg, false, savedDuration);
         } else {
-          showToast('PDF saved: ' + filename + ' - merged ' + result.pagesAdded + ' page(s) from ' + result.attemptedCount + ' attachment(s)');
+          showToast(savedMsg + ' - merged ' + result.pagesAdded + ' page(s) from ' + result.attemptedCount + ' attachment(s)');
         }
         resolve(filename);
       }).catch(function(err) {
@@ -2244,7 +2280,7 @@ function resetForm() {
   }, { title: 'Reset Form?', confirmLabel: 'Reset', cancelLabel: 'Cancel' });
 }
 
-function showToast(msg, isError) {
+function showToast(msg, isError, duration) {
   var container = document.getElementById('toastContainer');
   if (!container) return;
   var toast = document.createElement('div');
@@ -2257,7 +2293,7 @@ function showToast(msg, isError) {
   requestAnimationFrame(function(){ requestAnimationFrame(function(){ toast.classList.add('show'); }); });
   var dismiss = function(){ toast.classList.remove('show'); setTimeout(function(){ toast.remove(); }, 300); };
   toast.querySelector('.toast-close').addEventListener('click', dismiss);
-  setTimeout(dismiss, isError ? 12000 : 4000);
+  setTimeout(dismiss, duration || (isError ? 12000 : 4000));
 }
 
 function init() {
