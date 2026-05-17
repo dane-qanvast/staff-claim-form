@@ -141,14 +141,15 @@
   .helper-link a { color: var(--primary); text-decoration: none; }
   .helper-link a:hover { text-decoration: underline; }
   .toast-container { position: fixed; top: 24px; right: 24px; display: flex; flex-direction: column; gap: 10px; z-index: 3000; pointer-events: none; max-width: calc(100vw - 48px); }
-  .toast { background: var(--bg-elev); border: 1px solid var(--border); border-left: 3px solid var(--primary); color: var(--text); padding: 12px 14px; border-radius: 5px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; align-items: flex-start; gap: 10px; min-width: 260px; max-width: 360px; pointer-events: auto; transform: translateX(calc(100% + 32px)); opacity: 0; transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s; }
+  .toast { background: var(--bg-elev); border: 1px solid var(--border); border-left: 3px solid var(--primary); color: var(--text); padding: 14px 14px 14px 16px; border-radius: 3px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 12px; min-width: 260px; max-width: 360px; pointer-events: auto; transform: translateX(calc(100% + 32px)); opacity: 0; transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s; }
   .toast.show { transform: translateX(0); opacity: 1; }
   .toast.error { border-left-color: var(--danger); }
   .toast .toast-icon { flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; background: var(--primary); font-size: 10px; }
   .toast.error .toast-icon { background: var(--danger); }
-  .toast .toast-msg { flex: 1; line-height: 1.4; padding-top: 1px; }
-  .toast .toast-close { background: transparent; border: none; color: var(--text-mute); cursor: pointer; padding: 0 0 0 4px; font-size: 16px; line-height: 1; }
-  .toast .toast-close:hover { color: var(--text); }
+  .toast .toast-msg { flex: 1; line-height: 1.4; min-width: 0; }
+  .toast .toast-close { background: transparent; border: none; color: var(--text-mute); cursor: pointer; padding: 0; width: 22px; height: 22px; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit; }
+  .toast .toast-close:hover { color: var(--text); background: var(--bg-elev-2); }
+  .toast .toast-close svg { display: block; }
   @media (max-width: 520px) { .toast-container { top: 16px; right: 16px; left: 16px; } .toast { min-width: 0; max-width: none; } }
   .empty-state { text-align: center; padding: 32px 16px; color: var(--text-mute); font-size: 14px; }
   optgroup { color: var(--primary); font-style: normal; font-weight: 600; }
@@ -239,6 +240,15 @@
   /* Confirm-armed state (two-tap remove on mobile) */
   .confirm-armed { background: var(--danger) !important; color: white !important; border-color: var(--danger) !important; opacity: 1 !important; }
 
+  /* Attachment reminder banner inside the recipient picker footer */
+  .modal-footer.has-reminder { flex-direction: column; align-items: stretch; gap: 12px; }
+  .modal-footer.has-reminder .modal-footer-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+  .attach-reminder { display: flex; gap: 10px; align-items: flex-start; padding: 12px; background: rgba(5,165,148,0.08); border: 1px solid var(--primary-dim); border-radius: 3px; }
+  .attach-reminder .attach-reminder-icon { color: var(--primary); flex-shrink: 0; margin-top: 1px; }
+  .attach-reminder-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+  .attach-reminder-filename { color: var(--text); font-weight: 600; font-size: 13px; word-break: break-all; line-height: 1.3; }
+  .attach-reminder-hint { color: var(--text-dim); font-size: 12px; line-height: 1.4; }
+
   /* Native date inputs (hidden by default, shown on mobile)
      - appearance:none strips Chrome/Safari/Android default styling that adds internal padding & min-width
      - box-sizing + min-width:0 prevent grid/flex parents from being overflowed
@@ -282,8 +292,19 @@
     .manual-rate-input input { font-size: 16px; width: auto; flex: 1; min-width: 100px; }
     .currency-mode button { font-size: 13px; padding: 9px 10px; }
 
-    /* Add bottom padding to body so content clears the fixed action bar */
-    body { padding-bottom: 150px; }
+    /* Body bleeds to viewport edges - section blocks are full-width on mobile */
+    body { padding: 0 0 150px; }
+
+    /* Section blocks (header, cards) go edge-to-edge with no rounded corners or side borders */
+    .header, .card {
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+      margin-left: 0;
+      margin-right: 0;
+    }
+    .header { padding: 18px 16px; }
+    .card { padding: 18px 16px; }
 
     /* Full-bleed sticky action bar pinned to viewport bottom */
     .actions-bar {
@@ -316,6 +337,10 @@
       padding: 12px 4px;
       font-size: 13px;
       min-width: 0;
+    }
+    .actions-bar .actions-group [data-action="reset"] {
+      flex: 0 0 auto;
+      padding: 12px 14px;
     }
 
     /* Email Contacts modal - touch-friendly contact row */
@@ -386,6 +411,15 @@
       flex-shrink: 0;
     }
     @keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+    /* Closing animations - mirror the slide-up with a slide-down + backdrop fade */
+    .modal-overlay.is-closing { animation: backdrop-fade-out 0.22s ease-out forwards; }
+    .modal-overlay.is-closing .modal { animation: sheet-down 0.22s cubic-bezier(0.4, 0, 0.6, 1) forwards; }
+    @keyframes sheet-down { from { transform: translateY(0); } to { transform: translateY(100%); } }
+    @keyframes backdrop-fade-out {
+      from { background-color: rgba(0,0,0,0.75); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+      to { background-color: rgba(0,0,0,0); backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); }
+    }
 
     /* Move toasts to bottom (above the fixed action bar) on mobile */
     .toast-container {
@@ -1672,9 +1706,27 @@ function openSettings() {
   document.body.style.overflow = 'hidden';
 }
 
+// Mobile modal dismissal: play slide-down animation before removing .active.
+// On desktop or if modal is already inactive, closes instantly.
+var MODAL_CLOSE_MS = 220;
+function dismissModal(overlayEl, onComplete) {
+  if (!overlayEl) { if (onComplete) onComplete(); return; }
+  if (!isMobileViewport() || !overlayEl.classList.contains('active')) {
+    overlayEl.classList.remove('active');
+    if (onComplete) onComplete();
+    return;
+  }
+  overlayEl.classList.add('is-closing');
+  setTimeout(function() {
+    overlayEl.classList.remove('is-closing');
+    overlayEl.classList.remove('active');
+    if (onComplete) onComplete();
+  }, MODAL_CLOSE_MS);
+}
+
 function closeSettings() {
-  document.getElementById('settingsOverlay').classList.remove('active');
   document.body.style.overflow = '';
+  dismissModal(document.getElementById('settingsOverlay'));
 }
 
 function renderContactList() {
@@ -1737,27 +1789,47 @@ function addContact() {
 
 function openRecipientPicker() {
   var validContacts = contacts.filter(function(c){ return c.email && c.email.trim(); });
-  if (validContacts.length === 0) {
-    sendEmail([]);
-    showToast('Tip: Save email contacts in Settings for faster sending', false);
-    return;
-  }
   selectedRecipients = validContacts.filter(function(c){ return c.isDefault; }).map(function(c){ return c.email.trim(); });
+  resetRecipientPickerFooter(); // ensure clean button state
   renderRecipientList();
   document.getElementById('recipientOverlay').classList.add('active');
   document.body.style.overflow = 'hidden';
+  if (validContacts.length === 0) {
+    showToast('Tip: Save email contacts in Settings for faster sending');
+  }
 }
 
 function closeRecipientPicker() {
-  document.getElementById('recipientOverlay').classList.remove('active');
   document.body.style.overflow = '';
+  dismissModal(document.getElementById('recipientOverlay'), function() {
+    resetRecipientPickerFooter();
+  });
+}
+
+// Reset the picker's footer back to the initial "Open Email" button (in case it was swapped to an anchor)
+function resetRecipientPickerFooter() {
+  var footer = document.querySelector('#recipientOverlay .modal-footer');
+  if (!footer) return;
+  footer.classList.remove('has-reminder');
+  footer.innerHTML = '<button class="btn btn-secondary" data-action="close-recipients">Cancel</button>' +
+                     '<button class="btn btn-primary" data-action="confirm-recipients">Open Email</button>';
+  attachRecipientFooterListeners();
+}
+
+function attachRecipientFooterListeners() {
+  var footer = document.querySelector('#recipientOverlay .modal-footer');
+  if (!footer) return;
+  var cancelBtn = footer.querySelector('[data-action="close-recipients"]');
+  if (cancelBtn) cancelBtn.addEventListener('click', closeRecipientPicker);
+  var confirmBtn = footer.querySelector('[data-action="confirm-recipients"]');
+  if (confirmBtn) confirmBtn.addEventListener('click', confirmRecipients);
 }
 
 function renderRecipientList() {
   var list = document.getElementById('recipientList');
   var validContacts = contacts.filter(function(c){ return c.email && c.email.trim(); });
   if (validContacts.length === 0) {
-    list.innerHTML = '<div class="picker-empty">No email contacts saved. <a data-action="open-settings-from-picker">Open Settings to add one</a></div>';
+    list.innerHTML = '<div class="picker-empty">No email contacts saved. <a data-action="open-settings-from-picker">Open Settings to add one</a><br><br>You can still tap Open Email below to email yourself or type recipients manually.</div>';
     var link = list.querySelector('[data-action="open-settings-from-picker"]');
     if (link) link.addEventListener('click', function(){ closeRecipientPicker(); openSettings(); });
     return;
@@ -1797,18 +1869,99 @@ function renderRecipientList() {
   }
 }
 
+function buildMailtoUrl(recipients) {
+  var submittedBy = document.getElementById('submittedBy').value.trim() || 'Claimant';
+  var monthVal = document.getElementById('claimMonth').value;
+  var monthLabel = '';
+  if (monthVal) {
+    var parts = monthVal.split('-');
+    monthLabel = new Date(parts[0], parts[1] - 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  }
+  var total = 0;
+  for (var i = 0; i < items.length; i++) total += getItemSGD(items[i]);
+  var totalStr = total.toFixed(2);
+  var itemCount = items.length;
+  var itemWord = itemCount === 1 ? 'item' : 'items';
+  var receiptCount = 0;
+  for (var ri = 0; ri < items.length; ri++) receiptCount += (items[ri].attachments || []).length;
+  var receiptLine = receiptCount > 0 ? ('\n- Receipts included in PDF: ' + receiptCount) : '';
+  var filename = buildClaimFilename();
+  var subject = submittedBy + ': Total Claim: $' + totalStr + ' (' + monthLabel + ')';
+  var body = 'Hi,\n\nPlease find my expense reimbursement claim for ' + monthLabel + ' attached.\n\nSummary:\n- Total claim: SGD ' + totalStr + '\n- Number of ' + itemWord + ': ' + itemCount + receiptLine + '\n- Period: ' + monthLabel
+    + '\n\n[ATTACH: ' + filename + ' - delete this line after attaching the PDF]';
+  var toField = recipients && recipients.length > 0 ? recipients.join(',') : '';
+  return 'mailto:' + encodeURIComponent(toField) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+}
+
+// First tap: generate PDF, then swap the button to a real <a href="mailto:..."> for the user's second tap.
+// This is required on mobile because mailto: needs a fresh user gesture to launch the email app -
+// programmatic invocation after a 3-5s async PDF generation gets blocked silently.
 function confirmRecipients() {
-  closeRecipientPicker();
-  sendEmail(selectedRecipients);
+  var btn = document.querySelector('[data-action="confirm-recipients"]');
+  if (!btn || btn.disabled) return;
+
+  var mailto = buildMailtoUrl(selectedRecipients);
+
+  btn.disabled = true;
+  btn.classList.add('is-loading');
+  btn.innerHTML = '<span class="btn-spinner"></span><span>Generating PDF...</span>';
+  showToast('Generating PDF...');
+
+  downloadClaimPDF().then(function(filename) {
+    // If user closed the picker mid-generation, btn is detached - bail out
+    if (!btn.parentNode) return;
+
+    // Rebuild the footer with: [attach reminder banner] + [Cancel] [Open Email anchor]
+    var footer = btn.closest('.modal-footer');
+    if (!footer) return;
+    footer.classList.add('has-reminder');
+    footer.innerHTML =
+      '<div class="attach-reminder">' +
+        '<svg class="attach-reminder-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>' +
+        '<div class="attach-reminder-text">' +
+          '<div class="attach-reminder-filename">PDF saved: ' + escapeHTML(filename) + '</div>' +
+          '<div class="attach-reminder-hint">Remember to attach this PDF to your email after it opens.</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="modal-footer-buttons">' +
+        '<button class="btn btn-secondary" data-action="close-recipients">Cancel</button>' +
+        '<a class="btn btn-primary" href="' + mailto + '" data-action="open-email-app" style="text-decoration:none;">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>' +
+          '<span>Tap to open Email app</span>' +
+        '</a>' +
+      '</div>';
+
+    // Wire up the new buttons
+    var cancelBtn = footer.querySelector('[data-action="close-recipients"]');
+    if (cancelBtn) cancelBtn.addEventListener('click', closeRecipientPicker);
+    var anchor = footer.querySelector('[data-action="open-email-app"]');
+    if (anchor) anchor.addEventListener('click', function() {
+      // Reinforce the reminder right as they tap - sticky 12s error-style toast so it's hard to miss
+      showToast('Don\'t forget to attach ' + filename + ' to your email!', true);
+      // Close the picker shortly after - the mailto navigation is already in flight by this point
+      setTimeout(closeRecipientPicker, 500);
+    });
+  }).catch(function(err) {
+    if (!btn.parentNode) return;
+    btn.disabled = false;
+    btn.classList.remove('is-loading');
+    btn.innerHTML = 'Open Email';
+    showToast('Could not generate PDF: ' + (err && err.message ? err.message : 'unknown error'), true);
+  });
+}
+
+// Shared filename builder - used by both the PDF download and the email body reminder
+function buildClaimFilename() {
+  var submittedBy = document.getElementById('submittedBy').value.trim() || 'claim';
+  var month = document.getElementById('claimMonth').value || '';
+  var safeName = ('Staff_Claim_' + submittedBy + (month ? '_' + month : '')).replace(/[^a-z0-9_\-]/gi, '_');
+  return safeName + '.pdf';
 }
 
 function downloadClaimPDF() {
   return new Promise(function(resolve, reject) {
     var html = buildOutputHTML();
-    var submittedBy = document.getElementById('submittedBy').value.trim() || 'claim';
-    var month = document.getElementById('claimMonth').value || '';
-    var safeName = ('Staff_Claim_' + submittedBy + (month ? '_' + month : '')).replace(/[^a-z0-9_\-]/gi, '_');
-    var filename = safeName + '.pdf';
+    var filename = buildClaimFilename();
 
     var injected = '<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>'
       + '<script>(function(){function post(t,d,tr){try{window.parent.postMessage(Object.assign({type:t},d||{}),"*",tr||[]);}catch(e){}}'
@@ -1886,62 +2039,6 @@ function downloadClaimPDF() {
   });
 }
 
-function sendEmail(recipients) {
-  var submittedBy = document.getElementById('submittedBy').value.trim() || 'Claimant';
-  var monthVal = document.getElementById('claimMonth').value;
-  var monthLabel = '';
-  if (monthVal) {
-    var parts = monthVal.split('-');
-    monthLabel = new Date(parts[0], parts[1] - 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-  }
-  var total = 0;
-  for (var i = 0; i < items.length; i++) total += getItemSGD(items[i]);
-  var totalStr = total.toFixed(2);
-  var itemCount = items.length;
-  var itemWord = itemCount === 1 ? 'item' : 'items';
-  var receiptCount = 0;
-  for (var ri = 0; ri < items.length; ri++) receiptCount += (items[ri].attachments || []).length;
-  var receiptLine = receiptCount > 0 ? ('\n- Receipts included in PDF: ' + receiptCount) : '';
-  var subject = submittedBy + ': Total Claim: $' + totalStr + ' (' + monthLabel + ')';
-  var body = 'Hi,\n\nPlease find my expense reimbursement claim for ' + monthLabel + ' attached.\n\nSummary:\n- Total claim: SGD ' + totalStr + '\n- Number of ' + itemWord + ': ' + itemCount + receiptLine + '\n- Period: ' + monthLabel;
-  var toField = recipients && recipients.length > 0 ? recipients.join(',') : '';
-  var mailto = 'mailto:' + encodeURIComponent(toField) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-
-  var openMail = function() {
-    var a = document.createElement('a');
-    a.href = mailto;
-    a.target = '_blank';
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showToast('Opening your email client...');
-  };
-
-  var emailBtn = document.querySelector('[data-action="email-claim"]');
-  var previewBtn = document.querySelector('[data-action="view-html"]');
-  var origEmailHtml = emailBtn ? emailBtn.innerHTML : null;
-  var setLoading = function(loading) {
-    if (emailBtn) {
-      emailBtn.disabled = loading;
-      emailBtn.classList.toggle('is-loading', loading);
-      emailBtn.innerHTML = loading ? '<span class="btn-spinner"></span><span>Generating...</span>' : origEmailHtml;
-    }
-    if (previewBtn) previewBtn.disabled = loading;
-  };
-
-  showToast('Generating PDF...');
-  setLoading(true);
-  downloadClaimPDF().then(function(filename) {
-    setLoading(false);
-    openMail();
-  }).catch(function(err) {
-    setLoading(false);
-    showToast('Could not generate PDF (' + (err && err.message ? err.message : 'unknown error') + ')', true);
-    openMail();
-  });
-}
-
 function emailClaim() {
   if (!validateForm()) return;
   openRecipientPicker();
@@ -1963,9 +2060,9 @@ function showConfirm(message, onConfirm, opts) {
   document.body.style.overflow = 'hidden';
   var escHandler;
   var cleanup = function() {
-    overlay.remove();
     document.body.style.overflow = '';
     if (escHandler) document.removeEventListener('keydown', escHandler);
+    dismissModal(overlay, function() { overlay.remove(); });
   };
   overlay.querySelector('[data-confirm-action="cancel"]').addEventListener('click', cleanup);
   overlay.querySelector('[data-confirm-action="confirm"]').addEventListener('click', function() {
@@ -2003,7 +2100,7 @@ function showToast(msg, isError) {
   var iconSvg = isError
     ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
     : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-  toast.innerHTML = '<span class="toast-icon">' + iconSvg + '</span><span class="toast-msg">' + escapeHTML(msg) + '</span><button class="toast-close" type="button" aria-label="Dismiss">x</button>';
+  toast.innerHTML = '<span class="toast-icon">' + iconSvg + '</span><span class="toast-msg">' + escapeHTML(msg) + '</span><button class="toast-close" type="button" aria-label="Dismiss"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
   container.appendChild(toast);
   requestAnimationFrame(function(){ requestAnimationFrame(function(){ toast.classList.add('show'); }); });
   var dismiss = function(){ toast.classList.remove('show'); setTimeout(function(){ toast.remove(); }, 300); };
