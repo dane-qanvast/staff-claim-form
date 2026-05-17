@@ -495,12 +495,13 @@
     .add-contact-btn { padding: 14px; font-size: 14px; min-height: 48px; }
     [data-action="add-item"] { padding: 14px 18px; font-size: 15px; min-height: 48px; }
 
-    /* Move toasts to bottom (above the fixed action bar) on mobile */
+    /* Move toasts to bottom (above the fixed action bar) on mobile.
+       The action bar height on mobile is ~106px + safe-area-inset, so 118px puts the toast ~12px above it. */
     .toast-container {
       top: auto;
       right: 12px;
       left: 12px;
-      bottom: calc(160px + env(safe-area-inset-bottom));
+      bottom: calc(118px + env(safe-area-inset-bottom));
       max-width: none; /* override desktop max-width so left+right offsets actually define the width */
     }
     .toast {
@@ -508,7 +509,7 @@
       min-width: 0;
       max-width: none;
       background: #0a0c0d;     /* darker than --bg-elev */
-      padding: 14px 16px;      /* symmetric horizontal padding */
+      padding: 18px 16px;      /* taller box on mobile - more breathing room around the message */
     }
     .toast.show { transform: translateY(0); }
 
