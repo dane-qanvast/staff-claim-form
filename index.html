@@ -207,10 +207,12 @@
   .settings-section:last-child { margin-bottom: 0; }
   .settings-section-hint { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; line-height: 1.5; }
   .contact-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
-  .contact-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto auto; gap: 8px; align-items: center; padding: 8px; background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 4px; }
+  .contact-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto auto auto; gap: 8px; align-items: center; padding: 8px; background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 4px; }
   .contact-row input { padding: 7px 10px; font-size: 13px; }
-  .contact-row .contact-default { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); cursor: pointer; user-select: none; padding: 0 6px; white-space: nowrap; }
-  .contact-row .contact-default input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; accent-color: var(--primary); }
+  .contact-row .contact-default,
+  .contact-row .contact-cc { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); cursor: pointer; user-select: none; padding: 0 6px; white-space: nowrap; }
+  .contact-row .contact-default input[type="checkbox"],
+  .contact-row .contact-cc input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; accent-color: var(--primary); }
   .contact-row .contact-remove { background: transparent; border: none; color: var(--text-mute); cursor: pointer; padding: 4px 8px; border-radius: 3px; font-size: 12px; }
   .contact-row .contact-remove:hover { color: var(--danger); background: rgba(239,68,68,0.08); }
   .contact-row.empty-row { background: transparent; border: 1px dashed var(--border); }
@@ -226,6 +228,8 @@
   .picker-row .picker-name { font-size: 13px; color: var(--text); font-weight: 500; }
   .picker-row .picker-email { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
   .picker-row .picker-badge { font-size: 9px; padding: 2px 6px; background: var(--primary-dim); color: var(--primary-hover); border-radius: 2px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .picker-row .picker-badge.picker-badge-cc { background: transparent; color: var(--text-dim); box-shadow: inset 0 0 0 1px var(--border-focus); }
+  .picker-row .picker-badges { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
   .picker-empty { text-align: center; padding: 24px; color: var(--text-mute); font-size: 13px; }
   .picker-empty a { color: var(--primary); cursor: pointer; text-decoration: underline; }
 
@@ -358,14 +362,20 @@
       padding: 12px 14px;
     }
 
-    /* Email Contacts modal - touch-friendly contact row */
+    /* Email Contacts modal - touch-friendly contact row.
+       Default + CC checkboxes share a row (2 cols) since they're short labels;
+       text inputs and the Remove button span the full row. */
     .contact-row {
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: 12px;
       padding: 14px;
     }
+    .contact-row input[type="text"],
+    .contact-row input[type="email"],
+    .contact-row .contact-remove { grid-column: 1 / -1; }
     .contact-row input { min-height: 46px; }
-    .contact-row .contact-default {
+    .contact-row .contact-default,
+    .contact-row .contact-cc {
       padding: 12px 4px;
       font-size: 14px;
       gap: 10px;
@@ -374,19 +384,25 @@
       padding-top: 14px;
       margin-top: 2px;
     }
-    .contact-row .contact-default input[type="checkbox"] {
+    .contact-row .contact-default input[type="checkbox"],
+    .contact-row .contact-cc input[type="checkbox"] {
       width: 22px;
       height: 22px;
     }
     .contact-row .contact-remove {
+      justify-self: start;
+      display: inline-block;
+      width: auto;
+      padding: 12px 20px;
+      min-height: 48px;
       background: rgba(239,68,68,0.08);
       color: var(--danger);
-      padding: 14px;
-      font-size: 14px;
-      min-height: 48px;
       border: 1px solid rgba(239,68,68,0.2);
       border-radius: 3px;
+      font-family: inherit;
+      font-size: 14px;
       margin-top: 4px;
+      transition: all 0.15s;
     }
     .contact-row .contact-remove:hover,
     .contact-row .contact-remove:active {
@@ -669,8 +685,8 @@ var FORM_STATE_KEY = 'qanvast_claim_form_state_v1';
 var CONTACTS_KEY = 'qanvast_claim_contacts_v1';
 var CONTACTS_SEEDED_KEY = 'qanvast_claim_contacts_seeded_v1';
 var DEFAULT_SEED_CONTACTS = [
-  { name: 'Chloe', email: 'chloe.lam@qanvast.com', isDefault: true },
-  { name: 'Vivien', email: 'vivien.foo@qanvast.com', isDefault: true }
+  { name: 'Chloe', email: 'chloe.lam@qanvast.com', isDefault: true, isCc: false },
+  { name: 'Vivien', email: 'vivien.foo@qanvast.com', isDefault: true, isCc: false }
 ];
 
 var recents = { submittedBy: [], approvedBy: [], vendor: [], description: [] };
@@ -686,7 +702,7 @@ try {
     for (var sd = 0; sd < DEFAULT_SEED_CONTACTS.length; sd++) {
       var seed = DEFAULT_SEED_CONTACTS[sd];
       if (existingEmails.indexOf(seed.email.toLowerCase()) === -1) {
-        contacts.push({ name: seed.name, email: seed.email, isDefault: seed.isDefault });
+        contacts.push({ name: seed.name, email: seed.email, isDefault: seed.isDefault, isCc: !!seed.isCc });
       }
     }
     localStorage.setItem(CONTACTS_SEEDED_KEY, '1');
@@ -1825,6 +1841,7 @@ function renderContactList() {
     html += '<input type="text" placeholder="Name (optional)" value="' + escapeHTML(c.name || '') + '" data-contact-field="name">';
     html += '<input type="email" placeholder="email@example.com" value="' + escapeHTML(c.email || '') + '" data-contact-field="email">';
     html += '<label class="contact-default"><input type="checkbox" data-contact-field="isDefault"' + (c.isDefault ? ' checked' : '') + '> Default</label>';
+    html += '<label class="contact-cc"><input type="checkbox" data-contact-field="isCc"' + (c.isCc ? ' checked' : '') + '> CC</label>';
     html += '<button type="button" class="contact-remove" data-contact-action="remove">Remove</button>';
     html += '</div>';
   }
@@ -1838,7 +1855,7 @@ function renderContactList() {
         (function(input){
           var field = input.dataset.contactField;
           var handler = function(){
-            if (field === 'isDefault') contacts[idx].isDefault = input.checked;
+            if (field === 'isDefault' || field === 'isCc') contacts[idx][field] = input.checked;
             else contacts[idx][field] = input.value;
             saveContacts();
           };
@@ -1857,7 +1874,7 @@ function renderContactList() {
 }
 
 function addContact() {
-  contacts.push({ name: '', email: '', isDefault: false });
+  contacts.push({ name: '', email: '', isDefault: false, isCc: false });
   saveContacts();
   renderContactList();
   setTimeout(function(){
@@ -1872,7 +1889,9 @@ function addContact() {
 
 function openRecipientPicker() {
   var validContacts = contacts.filter(function(c){ return c.email && c.email.trim(); });
-  selectedRecipients = validContacts.filter(function(c){ return c.isDefault; }).map(function(c){ return c.email.trim(); });
+  selectedRecipients = validContacts.filter(function(c){ return c.isDefault; }).map(function(c){
+    return { email: c.email.trim(), isCc: !!c.isCc };
+  });
   resetRecipientPickerFooter(); // ensure clean button state
   renderRecipientList();
   document.getElementById('recipientOverlay').classList.add('active');
@@ -1908,6 +1927,14 @@ function attachRecipientFooterListeners() {
   if (confirmBtn) confirmBtn.addEventListener('click', confirmRecipients);
 }
 
+// Find a selected recipient by email - returns -1 if not selected
+function findSelectedIdx(email) {
+  for (var i = 0; i < selectedRecipients.length; i++) {
+    if (selectedRecipients[i].email === email) return i;
+  }
+  return -1;
+}
+
 function renderRecipientList() {
   var list = document.getElementById('recipientList');
   var validContacts = contacts.filter(function(c){ return c.email && c.email.trim(); });
@@ -1921,32 +1948,35 @@ function renderRecipientList() {
   for (var i = 0; i < validContacts.length; i++) {
     var c = validContacts[i];
     var email = c.email.trim();
-    var isSelected = selectedRecipients.indexOf(email) !== -1;
+    var isSelected = findSelectedIdx(email) !== -1;
     var display = c.name && c.name.trim() ? escapeHTML(c.name.trim()) : escapeHTML(email);
     var emailLine = c.name && c.name.trim() ? '<div class="picker-email">' + escapeHTML(email) + '</div>' : '';
-    var badge = c.isDefault ? '<span class="picker-badge">Default</span>' : '';
-    html += '<div class="picker-row' + (isSelected ? ' selected' : '') + '" data-email="' + escapeHTML(email) + '">';
+    var badges = '';
+    if (c.isCc) badges += '<span class="picker-badge picker-badge-cc">CC</span>';
+    if (c.isDefault) badges += '<span class="picker-badge">Default</span>';
+    var badgeWrap = badges ? '<div class="picker-badges">' + badges + '</div>' : '';
+    html += '<div class="picker-row' + (isSelected ? ' selected' : '') + '" data-email="' + escapeHTML(email) + '" data-cc="' + (c.isCc ? '1' : '0') + '">';
     html += '<input type="checkbox"' + (isSelected ? ' checked' : '') + '>';
     html += '<div class="picker-info"><div class="picker-name">' + display + '</div>' + emailLine + '</div>';
-    html += badge + '</div>';
+    html += badgeWrap + '</div>';
   }
   list.innerHTML = html;
   var rows = list.querySelectorAll('[data-email]');
   for (var i = 0; i < rows.length; i++) {
     (function(row){
       var email = row.dataset.email;
+      var isCc = row.dataset.cc === '1';
       var cb = row.querySelector('input[type="checkbox"]');
+      var toggle = function(shouldSelect) {
+        var idx = findSelectedIdx(email);
+        if (shouldSelect && idx === -1) selectedRecipients.push({ email: email, isCc: isCc });
+        else if (!shouldSelect && idx !== -1) selectedRecipients.splice(idx, 1);
+        cb.checked = shouldSelect;
+        row.classList.toggle('selected', shouldSelect);
+      };
       row.addEventListener('click', function(e){
-        if (e.target !== cb) {
-          var idx = selectedRecipients.indexOf(email);
-          if (idx === -1) { selectedRecipients.push(email); row.classList.add('selected'); cb.checked = true; }
-          else { selectedRecipients.splice(idx, 1); row.classList.remove('selected'); cb.checked = false; }
-        } else {
-          var idx = selectedRecipients.indexOf(email);
-          if (cb.checked && idx === -1) selectedRecipients.push(email);
-          else if (!cb.checked && idx !== -1) selectedRecipients.splice(idx, 1);
-          row.classList.toggle('selected', cb.checked);
-        }
+        if (e.target === cb) toggle(cb.checked);
+        else toggle(findSelectedIdx(email) === -1);
       });
     })(rows[i]);
   }
@@ -1972,8 +2002,19 @@ function buildMailtoUrl(recipients) {
   var subject = submittedBy + ': Total Claim: $' + totalStr + ' (' + monthLabel + ')';
   var body = 'Hi,\n\nPlease find my expense reimbursement claim for ' + monthLabel + ' attached.\n\nSummary:\n- Total claim: SGD ' + totalStr + '\n- Number of ' + itemWord + ': ' + itemCount + receiptLine + '\n- Period: ' + monthLabel
     + '\n\n[ATTACH: ' + filename + ' - delete this line after attaching the PDF]';
-  var toField = recipients && recipients.length > 0 ? recipients.join(',') : '';
-  return 'mailto:' + encodeURIComponent(toField) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+
+  // Split recipients into To: and Cc: based on each contact's isCc flag
+  var toList = [], ccList = [];
+  if (recipients && recipients.length > 0) {
+    for (var k = 0; k < recipients.length; k++) {
+      var r = recipients[k];
+      if (r && r.isCc) ccList.push(r.email);
+      else if (r && r.email) toList.push(r.email);
+    }
+  }
+  var url = 'mailto:' + encodeURIComponent(toList.join(',')) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  if (ccList.length > 0) url += '&cc=' + encodeURIComponent(ccList.join(','));
+  return url;
 }
 
 // First tap: generate PDF, then swap the button to a real <a href="mailto:..."> for the user's second tap.
