@@ -397,8 +397,12 @@
       max-height: 88vh;
       border-radius: 4px 4px 0 0;
       border-bottom: none;
-      animation: sheet-up 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
       padding-bottom: env(safe-area-inset-bottom);
+    }
+    /* Animation gated on .active so it re-triggers every time the modal opens.
+       Putting it directly on .modal would only fire on initial render (silently, since display:none). */
+    .modal-overlay.active:not(.is-closing) .modal {
+      animation: sheet-up 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
     .modal::before {
       content: '';
@@ -424,6 +428,10 @@
     /* Bigger expense item number circle on mobile - was 22px / 11px on desktop, hard to read on small screens */
     .item-number { width: 28px; height: 28px; font-size: 13px; }
 
+    /* Touch-friendly "Add" buttons - meet 48px minimum touch target */
+    .add-contact-btn { padding: 14px; font-size: 14px; min-height: 48px; }
+    [data-action="add-item"] { padding: 14px 18px; font-size: 15px; min-height: 48px; }
+
     /* Move toasts to bottom (above the fixed action bar) on mobile */
     .toast-container {
       top: auto;
@@ -448,6 +456,22 @@
       z-index: 5;
       background: var(--bg-elev);
       box-shadow: 0 1px 0 var(--border);
+    }
+
+    /* Preview: render iframe at desktop width and proportionately scale it to fit the mobile viewport.
+       This avoids the flex-header squeezing that happens when the generated PDF-styled HTML
+       is rendered at a narrow width. User sees the actual document layout, just smaller. */
+    .preview-overlay { padding: 12px; overflow: hidden; }
+    .preview-toolbar { margin-bottom: 12px; }
+    .preview-frame {
+      width: 1080px;
+      /* height = available height divided by scale, so when scaled it fills the visible area.
+         CSS calc requires we keep units balanced: (1080px / length) = number, then length * number = length */
+      height: calc((100vh - 110px) * (1080px / (100vw - 24px)));
+      transform-origin: top left;
+      /* scale = available width / base width (length / length = number) */
+      transform: scale(calc((100vw - 24px) / 1080px));
+      flex: none;
     }
   }
 </style>
