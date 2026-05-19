@@ -158,7 +158,7 @@
 
   /* Privacy liner between the Expense Items card and the totals/actions bar.
      Mirrors the message in Settings > Privacy but as inline footer-style copy. */
-  .privacy-liner { font-size: 12px; line-height: 1.55; color: var(--text-mute); text-align: left; padding: 4px 16px 16px; margin: 0; }
+  .privacy-liner { font-size: 12px; line-height: 1.55; color: var(--text-mute); text-align: center; padding: 4px 16px 16px; margin: 0; }
   .privacy-liner strong { color: var(--text-dim); font-weight: 600; }
 
   /* "Refresh for updates" button - shown once on page load when the gap since the last
@@ -449,6 +449,9 @@
     /* Claim Information grid: pack all four fields into a 2x2 on mobile - For Month and
        Date of Submission share a row, Submitted By and Approved By share the next. */
     .header-grid { grid-template-columns: 1fr 1fr; gap: 12px 10px; }
+
+    /* Privacy liner: left-align on mobile where content blocks all read top-to-bottom flush left */
+    .privacy-liner { text-align: left; }
 
     /* Body bleeds to viewport edges - section blocks are full-width on mobile */
     body { padding: 0 0 150px; }
