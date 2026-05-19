@@ -1884,60 +1884,79 @@ function validateForm() {
   clearAllFieldErrors();
   if (items.length === 0) { showToast('Please add at least one expense item', true); return false; }
 
-  var errors = []; // { fieldEl, msg, itemId? }
+  // Errors are stored as stable identifiers, not DOM refs.
+  // setExpandedItem() triggers render() which rebuilds the items list - any element
+  // refs collected before that point become detached and applying .has-error to them
+  // is a no-op on what the user sees. So we resolve to DOM nodes AFTER any expand.
+  var headerErrors = []; // { el, msg }  - header DOM is stable, ref is safe
+  var itemErrors = [];   // { itemId, fieldKey, msg }  - resolved post-render
 
-  // Header fields
   var submittedByEl = document.getElementById('submittedBy');
-  if (!submittedByEl.value.trim()) errors.push({ fieldEl: submittedByEl.closest('.field'), msg: 'Required' });
+  if (!submittedByEl.value.trim()) headerErrors.push({ el: submittedByEl.closest('.field'), msg: 'Required' });
   var claimMonthEl = document.getElementById('claimMonth');
-  if (!claimMonthEl.value) errors.push({ fieldEl: claimMonthEl.closest('.field'), msg: 'Required' });
+  if (!claimMonthEl.value) headerErrors.push({ el: claimMonthEl.closest('.field'), msg: 'Required' });
 
-  // Per-item validation
   for (var i = 0; i < items.length; i++) {
     var item = items[i];
-    var row = document.querySelector('[data-item-id="' + item.id + '"]');
-    if (!row) continue;
-    if (!item.vendor || !item.vendor.trim()) {
-      var el = row.querySelector('[data-field="vendor"]');
-      errors.push({ fieldEl: el && el.closest('.field'), msg: 'Required', itemId: item.id });
-    }
-    if (!item.category) {
-      var el2 = row.querySelector('[data-field="category"]');
-      errors.push({ fieldEl: el2 && el2.closest('.field'), msg: 'Required', itemId: item.id });
-    }
-    if (!item.description || !item.description.trim()) {
-      var el3 = row.querySelector('[data-field="description"]');
-      errors.push({ fieldEl: el3 && el3.closest('.field'), msg: 'Required', itemId: item.id });
-    }
-    if (getItemSGD(item) <= 0) {
-      var amountField = row.querySelector('.field-amount');
-      errors.push({ fieldEl: amountField, msg: 'Amount is required', itemId: item.id });
-    }
-    if (!item.attachments || item.attachments.length === 0) {
-      var attEl = row.querySelector('.attach-dropzone');
-      errors.push({ fieldEl: attEl && attEl.closest('.field'), msg: 'At least one receipt is required', itemId: item.id });
-    }
+    if (!item.vendor || !item.vendor.trim()) itemErrors.push({ itemId: item.id, fieldKey: 'vendor', msg: 'Required' });
+    if (!item.category) itemErrors.push({ itemId: item.id, fieldKey: 'category', msg: 'Required' });
+    if (!item.description || !item.description.trim()) itemErrors.push({ itemId: item.id, fieldKey: 'description', msg: 'Required' });
+    if (getItemSGD(item) <= 0) itemErrors.push({ itemId: item.id, fieldKey: 'amount', msg: 'Amount is required' });
+    if (!item.attachments || item.attachments.length === 0) itemErrors.push({ itemId: item.id, fieldKey: 'attachments', msg: 'At least one receipt is required' });
   }
 
-  if (errors.length === 0) return true;
+  var totalErrors = headerErrors.length + itemErrors.length;
+  if (totalErrors === 0) return true;
 
-  // Mark every error inline
-  for (var e = 0; e < errors.length; e++) {
-    setFieldError(errors[e].fieldEl, errors[e].msg);
+  // Apply header errors right away - header refs survive any subsequent render
+  for (var h = 0; h < headerErrors.length; h++) {
+    setFieldError(headerErrors[h].el, headerErrors[h].msg);
   }
 
-  // Scroll/expand to the first one
-  var first = errors[0];
-  if (first.itemId && expandedItemId !== first.itemId) {
-    setExpandedItem(first.itemId);
-    setTimeout(function() { scrollFieldIntoView(first.fieldEl); }, 150);
+  // Expand the first failing item BEFORE applying item errors so render() runs first
+  var firstItemError = itemErrors[0];
+  var didExpand = false;
+  if (firstItemError && expandedItemId !== firstItemError.itemId) {
+    setExpandedItem(firstItemError.itemId);
+    didExpand = true;
+  }
+
+  // Now resolve item field refs against the fresh DOM and apply errors
+  for (var j = 0; j < itemErrors.length; j++) {
+    var ie = itemErrors[j];
+    setFieldError(resolveItemFieldEl(ie.itemId, ie.fieldKey), ie.msg);
+  }
+
+  // Scroll to the first error (header errors take priority)
+  var firstScrollTarget = headerErrors.length > 0
+    ? headerErrors[0].el
+    : resolveItemFieldEl(firstItemError.itemId, firstItemError.fieldKey);
+  if (didExpand) {
+    setTimeout(function() { scrollFieldIntoView(firstScrollTarget); }, 150);
   } else {
-    scrollFieldIntoView(first.fieldEl);
+    scrollFieldIntoView(firstScrollTarget);
   }
 
-  var moreText = errors.length > 1 ? ' (+' + (errors.length - 1) + ' more)' : '';
-  showToast('Please fix the highlighted field' + (errors.length > 1 ? 's' : '') + moreText, true);
+  var moreText = totalErrors > 1 ? ' (+' + (totalErrors - 1) + ' more)' : '';
+  showToast('Please fix the highlighted field' + (totalErrors > 1 ? 's' : '') + moreText, true);
   return false;
+}
+
+// Resolve a per-item field to its .field wrapper element. Called AFTER any render
+// so the returned node is guaranteed to be the live one in the DOM.
+function resolveItemFieldEl(itemId, fieldKey) {
+  var row = document.querySelector('[data-item-id="' + itemId + '"]');
+  if (!row) return null;
+  if (fieldKey === 'vendor' || fieldKey === 'category' || fieldKey === 'description') {
+    var el = row.querySelector('[data-field="' + fieldKey + '"]');
+    return el && el.closest('.field');
+  }
+  if (fieldKey === 'amount') return row.querySelector('.field-amount');
+  if (fieldKey === 'attachments') {
+    var attEl = row.querySelector('.attach-dropzone');
+    return attEl && attEl.closest('.field');
+  }
+  return null;
 }
 
 // Two-tap confirmable action (mobile only) - prevents accidental removals
