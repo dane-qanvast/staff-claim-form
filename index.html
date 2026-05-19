@@ -2484,7 +2484,7 @@ function buildMailtoUrl(recipients) {
   var filename = buildClaimFilename();
   var subject = submittedBy + ': Total Claim: ' + baseCurrency + ' ' + totalStr + ' (' + monthLabel + ')';
   var body = 'Hi,\n\nPlease find my expense reimbursement claim for ' + monthLabel + ' attached.\n\nSummary:\n- Total claim: ' + baseCurrency + ' ' + totalStr + '\n- Number of ' + itemWord + ': ' + itemCount + receiptLine + '\n- Period: ' + monthLabel
-    + '\n\n[ATTACH: ' + filename + ' - delete this line after attaching the PDF]';
+    + '\n\n🔴 [ATTACH: ' + filename + ' - delete this line after attaching the PDF] 🔴';
 
   // Split recipients into To: and Cc: based on each contact's isCc flag
   var toList = [], ccList = [];
