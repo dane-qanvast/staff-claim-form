@@ -74,12 +74,11 @@
   .dp-quick:hover { background: var(--primary-dim); }
   .suggestions { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #232729; border: 1px solid var(--border-focus); border-radius: 4px; max-height: 180px; overflow-y: auto; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: none; }
   .suggestions.active { display: block; }
-  .suggestion-item { padding: 9px 12px; cursor: pointer; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .suggestion-item { padding: 9px 6px 9px 12px; cursor: pointer; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
   .suggestion-item:last-child { border-bottom: none; }
   .suggestion-item:hover { background: var(--primary-dim); }
-  .suggestion-item .recent-icon { color: var(--text-mute); font-size: 10px; }
   .suggestion-item .suggestion-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .suggestion-delete { background: transparent; border: none; color: var(--text-mute); cursor: pointer; padding: 2px 8px; font-size: 16px; line-height: 1; border-radius: 2px; font-family: inherit; opacity: 0.4; transition: opacity 0.15s, color 0.15s, background 0.15s; flex-shrink: 0; }
+  .suggestion-delete { background: transparent; border: none; color: var(--text-mute); cursor: pointer; padding: 2px 6px; font-size: 16px; line-height: 1; border-radius: 2px; font-family: inherit; opacity: 0.4; transition: opacity 0.15s, color 0.15s, background 0.15s; flex-shrink: 0; }
   .suggestion-item:hover .suggestion-delete { opacity: 1; }
   .suggestion-delete:hover { color: var(--danger); background: rgba(239, 68, 68, 0.12); opacity: 1; }
   .items-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
@@ -422,11 +421,9 @@
     .manual-rate-input input { font-size: 16px; width: auto; flex: 1; min-width: 100px; }
     .currency-mode button { font-size: 13px; padding: 9px 10px; }
 
-    /* Claim Information grid: pair "For The Month" and "Date of Submission" on the same row
-       since both are narrow date fields. "Submitted By" and "Approved By" (3rd and 4th
-       children) span the full width below - longer values benefit from the room. */
+    /* Claim Information grid: pack all four fields into a 2x2 on mobile - For Month and
+       Date of Submission share a row, Submitted By and Approved By share the next. */
     .header-grid { grid-template-columns: 1fr 1fr; gap: 12px 10px; }
-    .header-grid .field:nth-child(n+3) { grid-column: 1 / -1; }
 
     /* Body bleeds to viewport edges - section blocks are full-width on mobile */
     body { padding: 0 0 150px; }
@@ -1677,7 +1674,7 @@ function showSuggestions(input, box, field) {
   var filtered = query ? list.filter(function(v){ return v.toLowerCase().indexOf(query) !== -1; }).slice(0, 6) : list.slice(0, 6);
   if (filtered.length === 0) { box.classList.remove('active'); return; }
   box.innerHTML = filtered.map(function(v){
-    return '<div class="suggestion-item" data-value="' + escapeHTML(v) + '"><span class="recent-icon">recent</span><span class="suggestion-value">' + escapeHTML(v) + '</span><button type="button" class="suggestion-delete" data-delete="' + escapeHTML(v) + '" aria-label="Remove suggestion" title="Remove from recents">&times;</button></div>';
+    return '<div class="suggestion-item" data-value="' + escapeHTML(v) + '"><span class="suggestion-value">' + escapeHTML(v) + '</span><button type="button" class="suggestion-delete" data-delete="' + escapeHTML(v) + '" aria-label="Remove suggestion" title="Remove from recents">&times;</button></div>';
   }).join('');
   var items2 = box.querySelectorAll('.suggestion-item');
   for (var i = 0; i < items2.length; i++) {
