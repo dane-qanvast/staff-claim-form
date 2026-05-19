@@ -172,7 +172,9 @@
   .refresh-btn.is-loading svg { animation: refresh-spin 0.8s linear infinite; }
   @keyframes refresh-spin { to { transform: rotate(360deg); } }
 
-  /* First-time-user coach mark pointing to the Email Contacts button */
+  /* First-time-user coach mark pointing to the Settings button.
+     Dark theme: elevated dark bg + primary border + subtle primary halo so it's clearly
+     a UI element against the page chrome but doesn't shout like a fully-filled green box. */
   .email-contacts-wrap { position: relative; display: inline-flex; }
   .coachmark-tooltip {
     position: absolute;
@@ -180,33 +182,37 @@
     right: 0;
     width: max-content;
     max-width: min(280px, calc(100vw - 24px));
-    background: var(--primary);
-    color: #042818;
+    background: var(--bg-elev);
+    color: var(--text);
+    border: 1px solid var(--primary);
     padding: 14px 16px;
     border-radius: 3px;
     font-size: 13px;
-    line-height: 1.5;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+    line-height: 1.55;
+    box-shadow: 0 0 0 4px rgba(5, 165, 148, 0.1), 0 14px 32px rgba(0, 0, 0, 0.7);
     z-index: 200;
     opacity: 0;
     transform: translateY(-8px);
     transition: opacity 0.28s ease, transform 0.28s ease;
   }
   .coachmark-tooltip.is-visible { opacity: 1; transform: translateY(0); }
+  /* Arrow uses the border-triangle technique - solid primary fill, no rotation, no wedge
+     bleeding into the tooltip body (which was a visual artifact of the rotated-square approach). */
   .coachmark-tooltip::before {
     content: '';
     position: absolute;
-    top: -6px;
+    top: -7px;
     right: 26px;
-    width: 12px;
-    height: 12px;
-    background: var(--primary);
-    transform: rotate(45deg);
+    width: 0;
+    height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-bottom: 7px solid var(--primary);
   }
-  .coachmark-tooltip-text { margin: 0 0 10px; }
+  .coachmark-tooltip-text { margin: 0 0 10px; color: var(--text); }
   .coachmark-tooltip-dismiss {
-    background: rgba(4, 40, 24, 0.18);
-    color: #042818;
+    background: var(--primary-dim);
+    color: var(--primary-hover);
     border: none;
     padding: 7px 14px;
     border-radius: 3px;
@@ -214,10 +220,10 @@
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background 0.15s, color 0.15s;
   }
   @media (hover: hover) {
-    .coachmark-tooltip-dismiss:hover { background: rgba(4, 40, 24, 0.28); }
+    .coachmark-tooltip-dismiss:hover { background: var(--primary); color: #042818; }
   }
   /* Browser-recommendation liner: hidden by default, surfaced only on mobile when the user is NOT on Chrome */
   .chrome-recommend { display: none; }
