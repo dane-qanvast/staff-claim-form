@@ -156,6 +156,54 @@
   .helper-link { font-size: 11px; color: var(--text-mute); margin-top: 2px; }
   .helper-link a { color: var(--primary); text-decoration: none; }
   .helper-link a:hover { text-decoration: underline; }
+
+  /* First-time-user coach mark pointing to the Email Contacts button */
+  .email-contacts-wrap { position: relative; display: inline-flex; }
+  .coachmark-tooltip {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    width: max-content;
+    max-width: min(280px, calc(100vw - 24px));
+    background: var(--primary);
+    color: #042818;
+    padding: 14px 16px;
+    border-radius: 3px;
+    font-size: 13px;
+    line-height: 1.5;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+    z-index: 200;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 0.28s ease, transform 0.28s ease;
+  }
+  .coachmark-tooltip.is-visible { opacity: 1; transform: translateY(0); }
+  .coachmark-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: 26px;
+    width: 12px;
+    height: 12px;
+    background: var(--primary);
+    transform: rotate(45deg);
+  }
+  .coachmark-tooltip-text { margin: 0 0 10px; }
+  .coachmark-tooltip-dismiss {
+    background: rgba(4, 40, 24, 0.18);
+    color: #042818;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  @media (hover: hover) {
+    .coachmark-tooltip-dismiss:hover { background: rgba(4, 40, 24, 0.28); }
+  }
   /* Browser-recommendation liner: hidden by default, surfaced only on mobile when the user is NOT on Chrome */
   .chrome-recommend { display: none; }
   .toast-container { position: fixed; top: 24px; right: 24px; display: flex; flex-direction: column; gap: 10px; z-index: 3000; pointer-events: none; max-width: calc(100vw - 48px); }
@@ -584,6 +632,19 @@
       text-align: left;
     }
     html.non-chrome .chrome-recommend-icon { flex-shrink: 0; margin-top: 2px; opacity: 0.85; }
+
+    /* Coach mark on mobile: button is on the LEFT side of the header (not right), so
+       anchor the tooltip's left edge to the wrap and let it extend rightward into the
+       viewport. Cap the width so it never bleeds past the right edge. */
+    .coachmark-tooltip {
+      right: auto;
+      left: 0;
+      max-width: calc(100vw - 32px);
+    }
+    .coachmark-tooltip::before {
+      right: auto;
+      left: 26px;
+    }
     /* In the header, sit below the Email Contacts button on its own line */
     html.non-chrome .header-actions { flex-wrap: wrap; }
     html.non-chrome .header-actions .chrome-recommend { flex-basis: 100%; order: 99; padding: 4px 0 0; }
@@ -643,10 +704,12 @@
       <p>Key in your expenses and generate email for claims easily</p>
     </div>
     <div class="header-actions">
-      <button type="button" class="sheet-link" data-action="open-settings" title="Email Contacts">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-        Email Contacts
-      </button>
+      <div class="email-contacts-wrap">
+        <button type="button" class="sheet-link" data-action="open-settings" title="Email Contacts">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email Contacts
+        </button>
+      </div>
       <span class="chrome-recommend"><svg class="chrome-recommend-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>Chrome browser recommended to generate PDF and pre-composed email.</span></span>
     </div>
   </div>
@@ -2560,6 +2623,51 @@ function init() {
   } else {
     addItem();
   }
+
+  // Show the Email Contacts coach mark on first visit only.
+  // Delayed so the form paints first; tooltip then animates in.
+  setTimeout(maybeShowEmailContactsTooltip, 600);
+}
+
+// First-time onboarding tooltip pointing at the Email Contacts button.
+// Gated by localStorage flag - shows exactly once per browser/profile.
+var EMAIL_TOOLTIP_SEEN_KEY = 'qanvast_claim_email_contacts_tooltip_seen_v1';
+function maybeShowEmailContactsTooltip() {
+  try {
+    if (localStorage.getItem(EMAIL_TOOLTIP_SEEN_KEY)) return;
+  } catch (e) { return; }
+
+  var wrap = document.querySelector('.email-contacts-wrap');
+  if (!wrap) return;
+
+  var tooltip = document.createElement('div');
+  tooltip.className = 'coachmark-tooltip';
+  tooltip.setAttribute('role', 'status');
+  tooltip.innerHTML =
+    '<div class="coachmark-tooltip-text">Add your supervisor\'s email here. Emails of the Finance team are added by default.</div>' +
+    '<button type="button" class="coachmark-tooltip-dismiss">Got it</button>';
+  wrap.appendChild(tooltip);
+
+  function markSeen() {
+    try { localStorage.setItem(EMAIL_TOOLTIP_SEEN_KEY, '1'); } catch (e) {}
+  }
+  function dismiss() {
+    tooltip.classList.remove('is-visible');
+    setTimeout(function() { if (tooltip.parentNode) tooltip.parentNode.removeChild(tooltip); }, 300);
+    markSeen();
+  }
+
+  // Animate in on the next paint
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() { tooltip.classList.add('is-visible'); });
+  });
+
+  // Explicit dismiss button
+  tooltip.querySelector('.coachmark-tooltip-dismiss').addEventListener('click', dismiss);
+
+  // If the user opens Email Contacts directly, they've discovered the feature - dismiss
+  var btn = wrap.querySelector('[data-action="open-settings"]');
+  if (btn) btn.addEventListener('click', dismiss, { once: true });
 }
 
 init();
