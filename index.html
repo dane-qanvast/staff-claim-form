@@ -156,6 +156,11 @@
   .helper-link a { color: var(--primary); text-decoration: none; }
   .helper-link a:hover { text-decoration: underline; }
 
+  /* Privacy liner between the Expense Items card and the totals/actions bar.
+     Mirrors the message in Settings > Privacy but as inline footer-style copy. */
+  .privacy-liner { font-size: 12px; line-height: 1.55; color: var(--text-mute); text-align: left; padding: 4px 16px 16px; margin: 0; }
+  .privacy-liner strong { color: var(--text-dim); font-weight: 600; }
+
   /* "Refresh for updates" button - shown once on page load when the gap since the last
      load exceeds 24 hours. Lives in header-actions, left of the Settings button. */
   .refresh-btn { display: none; align-items: center; gap: 8px; padding: 10px 16px; background: var(--primary-dim); border: 1px solid var(--primary); border-radius: 5px; color: var(--primary-hover); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap; }
@@ -281,6 +286,9 @@
   .settings-section { margin-bottom: 24px; }
   .settings-section:last-child { margin-bottom: 0; }
   .settings-section-hint { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; line-height: 1.5; }
+  /* Privacy section reads as a footnote rather than a control - top divider, no inner bottom gap */
+  .settings-section-privacy { padding-top: 18px; border-top: 1px solid var(--border); }
+  .settings-section-privacy .settings-section-hint { margin-bottom: 0; }
   .base-currency-select { width: 100%; max-width: 200px; }
   .contact-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
   .contact-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto auto auto; gap: 8px; align-items: center; padding: 8px; background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 4px; }
@@ -788,6 +796,8 @@
     </div>
   </div>
 
+  <p class="privacy-liner no-print"><strong>Privacy:</strong> Everything you enter here stays in your browser's local storage. Nothing is uploaded to a server or shared with anyone else. Clearing your browser data will reset everything.</p>
+
   <div class="actions-bar no-print">
     <div class="totals">
       <span class="totals-label">Total</span>
@@ -823,6 +833,10 @@
         <div class="settings-section-hint">Save email addresses of colleagues you frequently send claims to. Check "Default" to auto-select them when emailing.</div>
         <div id="contactList" class="contact-list"></div>
         <button type="button" class="add-contact-btn" data-action="add-contact">+ Add Contact</button>
+      </div>
+      <div class="settings-section settings-section-privacy">
+        <div class="settings-section-title">Privacy</div>
+        <div class="settings-section-hint">Everything you enter here stays in your browser's local storage. Nothing is uploaded to a server or shared with anyone else. Clearing your browser data will reset everything.</div>
       </div>
     </div>
     <div class="modal-footer">
