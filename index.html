@@ -303,6 +303,10 @@
     transition: background 0.15s;
   }
   .claim-step-btn:hover { background: var(--primary-btn-hover); }
+  /* Step 1 on desktop: PDF auto-saves to Downloads folder, so no Download button needed and the
+     label reads past tense. Mobile media query (below) re-enables the button and swaps the label. */
+  .step-label-mobile { display: none; }
+  .claim-step-btn[data-action="redownload-pdf-btn"] { display: none; }
 
   /* Native date inputs (hidden by default, shown on mobile)
      - appearance:none strips Chrome/Safari/Android default styling that adds internal padding & min-width
@@ -550,6 +554,10 @@
       padding: 12px 16px;
       font-size: 14px;
     }
+    /* Step 1 on mobile: re-enable the Download button (hidden by desktop base rule) and swap label */
+    .claim-step-btn[data-action="redownload-pdf-btn"] { display: inline-flex; }
+    .step-label-desktop { display: none; }
+    .step-label-mobile { display: inline; }
     .claim-step[data-action="redownload-pdf"] {
       cursor: pointer;
       -webkit-tap-highlight-color: rgba(5, 165, 148, 0.12);
@@ -2201,7 +2209,7 @@ function confirmRecipients() {
         '<div class="claim-step-content">' +
           '<div class="claim-step-head">' +
             '<span class="claim-step-num">1</span>' +
-            '<span class="claim-step-label">Download PDF</span>' +
+            '<span class="claim-step-label"><span class="step-label-desktop">PDF downloaded</span><span class="step-label-mobile">Download PDF</span></span>' +
           '</div>' +
           '<div class="claim-step-detail">' +
             '<svg class="claim-step-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>' +
