@@ -156,6 +156,17 @@
   .helper-link a { color: var(--primary); text-decoration: none; }
   .helper-link a:hover { text-decoration: underline; }
 
+  /* "Refresh for updates" button - shown once on page load when the gap since the last
+     load exceeds 24 hours. Lives in header-actions, left of the Settings button. */
+  .refresh-btn { display: none; align-items: center; gap: 8px; padding: 10px 16px; background: var(--primary-dim); border: 1px solid var(--primary); border-radius: 5px; color: var(--primary-hover); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap; }
+  .refresh-btn.is-visible { display: inline-flex; }
+  @media (hover: hover) {
+    .refresh-btn:hover { background: var(--primary); color: #042818; }
+  }
+  .refresh-btn.is-loading { opacity: 0.7; cursor: wait; }
+  .refresh-btn.is-loading svg { animation: refresh-spin 0.8s linear infinite; }
+  @keyframes refresh-spin { to { transform: rotate(360deg); } }
+
   /* First-time-user coach mark pointing to the Email Contacts button */
   .email-contacts-wrap { position: relative; display: inline-flex; }
   .coachmark-tooltip {
@@ -722,6 +733,10 @@
       <p>Key in your expenses and generate email for claims easily</p>
     </div>
     <div class="header-actions">
+      <button type="button" id="refreshBtn" class="refresh-btn no-print" data-action="refresh-app">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Refresh for updates
+      </button>
       <div class="email-contacts-wrap">
         <button type="button" class="sheet-link" data-action="open-settings" title="Settings">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -881,6 +896,8 @@ var FORM_STATE_KEY = 'qanvast_claim_form_state_v1';
 var CONTACTS_KEY = 'qanvast_claim_contacts_v1';
 var CONTACTS_SEEDED_KEY = 'qanvast_claim_contacts_seeded_v1';
 var BASE_CURRENCY_KEY = 'qanvast_claim_base_currency_v1';
+var LAST_LOAD_KEY = 'qanvast_claim_last_load_v1';
+var REFRESH_PROMPT_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
 var DEFAULT_SEED_CONTACTS = [
   { name: 'Chloe', email: 'chloe.lam@qanvast.com', isDefault: true, isCc: false },
   { name: 'Vivien', email: 'vivien.foo@qanvast.com', isDefault: true, isCc: false }
@@ -897,6 +914,21 @@ function saveBaseCurrency() { try { localStorage.setItem(BASE_CURRENCY_KEY, base
 // Sync the totals-bar currency label before init() runs, so returning MY users don't
 // see a flash of the HTML-default "SGD" before recalcTotal() is called.
 (function() { var el = document.getElementById('totalCurrency'); if (el) el.textContent = baseCurrency; })();
+
+// Decide whether to show the "Refresh for updates" button. The decision must happen
+// BEFORE we overwrite LAST_LOAD_KEY, otherwise the gap would always be 0 ms.
+// The flag is consumed in init() once DOM event wiring runs.
+var shouldOfferRefresh = false;
+(function() {
+  try {
+    var stored = localStorage.getItem(LAST_LOAD_KEY);
+    var last = stored ? parseInt(stored, 10) : 0;
+    var now = Date.now();
+    // First-ever visit: last is 0, no prompt. Otherwise gate on 24h gap.
+    if (last > 0 && (now - last) > REFRESH_PROMPT_THRESHOLD_MS) shouldOfferRefresh = true;
+    localStorage.setItem(LAST_LOAD_KEY, String(now));
+  } catch (e) {}
+})();
 
 // Foreign-currency picker should exclude whichever currency is the user's base
 function getForeignCurrencies() {
@@ -2710,6 +2742,21 @@ function init() {
   document.querySelector('[data-action="close-preview"]').addEventListener('click', closePreview);
   document.querySelector('[data-action="download-html"]').addEventListener('click', downloadHTML);
   document.querySelector('[data-action="print-preview"]').addEventListener('click', printPreview);
+
+  // "Refresh for updates" button - shown only if it's been >24h since the last load.
+  // Once it appears in this session, reloading either via the button or otherwise
+  // updates the timestamp, so it won't reappear until another 24h gap.
+  var refreshBtn = document.getElementById('refreshBtn');
+  if (refreshBtn) {
+    if (shouldOfferRefresh) refreshBtn.classList.add('is-visible');
+    refreshBtn.addEventListener('click', function() {
+      if (refreshBtn.classList.contains('is-loading')) return;
+      refreshBtn.classList.add('is-loading');
+      // Brief delay so the spinner is perceivable; the actual reload triggers a fresh
+      // conditional GET against GitHub Pages, which serves any newer HTML if shipped.
+      setTimeout(function() { location.reload(); }, 150);
+    });
+  }
 
   document.querySelector('[data-action="open-settings"]').addEventListener('click', openSettings);
   var closeSettingsBtns = document.querySelectorAll('[data-action="close-settings"]');
