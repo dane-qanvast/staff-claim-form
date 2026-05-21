@@ -8,19 +8,51 @@
 <style>
   :root {
     --bg: #0d0f10; --bg-elev: #16191b; --bg-elev-2: #1d2123;
+    --bg-suggest: #232729;
     --border: #2a2f33; --border-focus: #3d444a;
     --text: #e8eaec; --text-dim: #9aa0a6; --text-mute: #6b7178;
+    --text-heading: #ffffff;
     --primary: #05a594; --primary-hover: #1ec0ae; --primary-dim: #024a42;
     --primary-glow: rgba(5,165,148,0.25);
     --primary-btn: #047a6e; --primary-btn-hover: #058a7c;
     --danger: #ef4444; --warning: #f59e0b;
     --shadow: 0 10px 40px rgba(0,0,0,0.4);
+    --shadow-modal: 0 20px 60px rgba(0,0,0,0.6);
+    --shadow-tooltip: 0 0 0 4px rgba(5, 165, 148, 0.1), 0 14px 32px rgba(0, 0, 0, 0.7);
+    --shadow-popover: 0 12px 32px rgba(0,0,0,0.5);
+    --hover-tint: rgba(255, 255, 255, 0.02);
+    /* Toasts are theme-invariant - always dark surface + light text. Snackbar pattern. */
+    --toast-bg: #1a1d20; --toast-text: #e8eaec; --toast-border: rgba(255,255,255,0.08);
+    --toast-close-hover-bg: rgba(255,255,255,0.1);
+    /* Body background gradients - decorative primary glows at the corners */
+    --bg-gradient-1: rgba(5,165,148,0.08);
+    --bg-gradient-2: rgba(5,165,148,0.06);
+  }
+  /* Light theme overrides. Triggered by .theme-light on <html>. Brand teal stays;
+     surface, text, shadow, and tint variables flip to their light equivalents. */
+  html.theme-light {
+    --bg: #f7f8fa; --bg-elev: #ffffff; --bg-elev-2: #f1f3f5;
+    --bg-suggest: #ffffff;
+    --border: #e1e4e8; --border-focus: #c4ccd2;
+    --text: #1a1d20; --text-dim: #5a6166; --text-mute: #8a9095;
+    --text-heading: #0a0c0e;
+    --primary-hover: #017a6e; --primary-dim: #d4f1ec;
+    --primary-glow: rgba(5,165,148,0.18);
+    --primary-btn: #05a594; --primary-btn-hover: #048a7c;
+    --danger: #dc2626; --warning: #d97706;
+    --shadow: 0 6px 20px rgba(0,0,0,0.06);
+    --shadow-modal: 0 16px 40px rgba(0,0,0,0.12);
+    --shadow-tooltip: 0 0 0 4px rgba(5, 165, 148, 0.08), 0 12px 28px rgba(0, 0, 0, 0.1);
+    --shadow-popover: 0 8px 24px rgba(0,0,0,0.08);
+    --hover-tint: rgba(0, 0, 0, 0.03);
+    --bg-gradient-1: rgba(5,165,148,0.05);
+    --bg-gradient-2: rgba(5,165,148,0.04);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg);
-    background-image: radial-gradient(circle at 15% 10%, rgba(5,165,148,0.08), transparent 40%), radial-gradient(circle at 85% 90%, rgba(5,165,148,0.06), transparent 40%);
+    background-image: radial-gradient(circle at 15% 10%, var(--bg-gradient-1), transparent 40%), radial-gradient(circle at 85% 90%, var(--bg-gradient-2), transparent 40%);
     color: var(--text); min-height: 100vh; padding: 24px 16px 48px; line-height: 1.5;
     -webkit-font-smoothing: antialiased;
   }
@@ -32,10 +64,10 @@
   .sheet-link { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 5px; color: var(--text-dim); text-decoration: none; font-size: 13px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
   .sheet-link:hover { background: var(--primary-dim); border-color: var(--primary); color: var(--text); transform: translateY(-1px); }
   .card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: var(--shadow); }
-  .card-title { font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: #ffffff; font-weight: 600; margin-bottom: 16px; }
+  .card-title { font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-heading); font-weight: 600; margin-bottom: 16px; }
   .header-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
   .field { display: flex; flex-direction: column; gap: 6px; position: relative; min-width: 0; }
-  .field label { font-size: 12px; color: #ffffff; font-weight: 500; }
+  .field label { font-size: 12px; color: var(--text-heading); font-weight: 500; }
   .field label .req { color: var(--primary); margin-left: 2px; }
   input, select, textarea { background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; color: var(--text); font-size: 14px; font-family: inherit; transition: all 0.15s; width: 100%; }
   input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -50,7 +82,7 @@
   .date-picker .cal-icon { color: var(--text-dim); flex-shrink: 0; opacity: 0.7; }
   .date-picker:hover .cal-icon { opacity: 1; }
   .date-picker.active .cal-icon { color: var(--primary); opacity: 1; }
-  .date-popover { position: absolute; top: calc(100% + 6px); left: 0; background: var(--bg-elev); border: 1px solid var(--border-focus); border-radius: 6px; padding: 16px; z-index: 300; box-shadow: 0 12px 32px rgba(0,0,0,0.5); display: none; min-width: 280px; max-width: 320px; }
+  .date-popover { position: absolute; background: var(--bg-elev); border: 1px solid var(--border-focus); border-radius: 6px; padding: 16px; z-index: 300; box-shadow: var(--shadow-popover); display: none; min-width: 280px; max-width: 320px; }
   .date-popover.active { display: block; }
   .dp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
   .dp-nav-btn { background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 3px; width: 28px; height: 28px; color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; padding: 0; }
@@ -72,7 +104,7 @@
   .dp-footer { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); gap: 8px; }
   .dp-quick { background: transparent; border: none; color: var(--primary); cursor: pointer; font-size: 12px; font-weight: 500; padding: 6px 10px; border-radius: 3px; font-family: inherit; }
   .dp-quick:hover { background: var(--primary-dim); }
-  .suggestions { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #232729; border: 1px solid var(--border-focus); border-radius: 4px; max-height: 180px; overflow-y: auto; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: none; }
+  .suggestions { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--bg-suggest); border: 1px solid var(--border-focus); border-radius: 4px; max-height: 180px; overflow-y: auto; z-index: 100; box-shadow: var(--shadow-popover); display: none; }
   .suggestions.active { display: block; }
   .suggestion-item { padding: 9px 6px 9px 12px; cursor: pointer; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
   .suggestion-item:last-child { border-bottom: none; }
@@ -102,7 +134,7 @@
   /* :hover styles gated to real-pointer devices - on touch devices the first tap triggers :hover
      and the second tap is the click, requiring two taps to expand the accordion */
   @media (hover: hover) {
-    .item-summary:hover { background: rgba(255, 255, 255, 0.02); }
+    .item-summary:hover { background: var(--hover-tint); }
     .item-row:hover .item-remove { opacity: 1; }
     .item-remove:hover { color: var(--danger); background: rgba(239, 68, 68, 0.08); }
   }
@@ -150,7 +182,7 @@
   .actions-bar { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; padding: 20px 24px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; margin-top: 20px; position: sticky; bottom: 16px; z-index: 20; backdrop-filter: blur(12px); box-shadow: var(--shadow); }
   .totals { display: flex; align-items: baseline; gap: 12px; }
   .totals-label { color: var(--text-dim); font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; }
-  .totals-value { font-size: 28px; font-weight: 700; color: #ffffff; font-variant-numeric: tabular-nums; }
+  .totals-value { font-size: 28px; font-weight: 700; color: var(--text-heading); font-variant-numeric: tabular-nums; }
   .actions-group { display: flex; gap: 10px; flex-wrap: wrap; }
   .helper-link { font-size: 11px; color: var(--text-mute); margin-top: 2px; }
   .helper-link a { color: var(--primary); text-decoration: none; }
@@ -159,7 +191,6 @@
   /* Privacy liner between the Expense Items card and the totals/actions bar.
      Mirrors the message in Settings > Privacy but as inline footer-style copy. */
   .privacy-liner { font-size: 12px; line-height: 1.55; color: var(--text-mute); text-align: center; padding: 4px 16px 16px; margin: 0; }
-  .privacy-liner strong { color: var(--text-dim); font-weight: 600; }
 
   /* "Refresh for updates" button - shown once on page load when the gap since the last
      load exceeds 24 hours. Lives in header-actions, left of the Settings button. */
@@ -189,7 +220,7 @@
     border-radius: 3px;
     font-size: 13px;
     line-height: 1.55;
-    box-shadow: 0 0 0 4px rgba(5, 165, 148, 0.1), 0 14px 32px rgba(0, 0, 0, 0.7);
+    box-shadow: var(--shadow-tooltip);
     z-index: 200;
     opacity: 0;
     transform: translateY(-8px);
@@ -228,14 +259,14 @@
   /* Browser-recommendation liner: hidden by default, surfaced only on mobile when the user is NOT on Chrome */
   .chrome-recommend { display: none; }
   .toast-container { position: fixed; top: 24px; right: 24px; display: flex; flex-direction: column; gap: 10px; z-index: 3000; pointer-events: none; max-width: calc(100vw - 48px); }
-  .toast { background: var(--bg-elev); border: 1px solid var(--border); border-left: 3px solid var(--primary); color: var(--text); padding: 14px 14px 14px 16px; border-radius: 3px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 12px; min-width: 260px; max-width: 360px; pointer-events: auto; transform: translateX(calc(100% + 32px)); opacity: 0; transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s; }
+  .toast { background: var(--toast-bg); border: 1px solid var(--toast-border); border-left: 3px solid var(--primary); color: var(--toast-text); padding: 14px 14px 14px 16px; border-radius: 3px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 12px; min-width: 260px; max-width: 360px; pointer-events: auto; transform: translateX(calc(100% + 32px)); opacity: 0; transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s; }
   .toast.show { transform: translateX(0); opacity: 1; }
   .toast.error { border-left-color: var(--danger); }
   .toast .toast-icon { flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; background: var(--primary); font-size: 10px; }
   .toast.error .toast-icon { background: var(--danger); }
   .toast .toast-msg { flex: 1; line-height: 1.4; min-width: 0; }
-  .toast .toast-close { background: transparent; border: none; color: var(--text-mute); cursor: pointer; padding: 0; width: 22px; height: 22px; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit; }
-  .toast .toast-close:hover { color: var(--text); background: var(--bg-elev-2); }
+  .toast .toast-close { background: transparent; border: none; color: rgba(232, 234, 236, 0.55); cursor: pointer; padding: 0; width: 22px; height: 22px; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit; }
+  .toast .toast-close:hover { color: var(--toast-text); background: var(--toast-close-hover-bg); }
   .toast .toast-close svg { display: block; }
   @media (max-width: 520px) { .toast-container { top: 16px; right: 16px; left: 16px; } .toast { min-width: 0; max-width: none; } }
   .empty-state { text-align: center; padding: 32px 16px; color: var(--text-mute); font-size: 14px; }
@@ -282,9 +313,9 @@
 
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 1500; display: none; align-items: center; justify-content: center; padding: 24px; }
   .modal-overlay.active { display: flex; }
-  .modal { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; width: 100%; max-width: 560px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  .modal { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; width: 100%; max-width: 560px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: var(--shadow-modal); }
   .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border); }
-  .modal-header h2 { color: #ffffff; font-size: 18px; font-weight: 600; }
+  .modal-header h2 { color: var(--text-heading); font-size: 18px; font-weight: 600; }
   .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
   .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
   .modal-close { background: transparent; border: none; color: var(--text-mute); cursor: pointer; padding: 6px; line-height: 0; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s; }
@@ -296,6 +327,13 @@
   .settings-section-privacy { padding-top: 18px; border-top: 1px solid var(--border); }
   .settings-section-privacy .settings-section-hint { margin-bottom: 0; }
   .base-currency-select { width: 100%; max-width: 200px; }
+  /* Theme toggle - segmented control matching the .currency-mode look */
+  .theme-toggle { display: flex; background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 4px; padding: 3px; gap: 3px; max-width: 320px; }
+  .theme-toggle button { flex: 1; background: transparent; border: none; color: var(--text-dim); padding: 8px 12px; border-radius: 2px; cursor: pointer; font-size: 13px; font-weight: 500; font-family: inherit; transition: all 0.15s; }
+  @media (hover: hover) {
+    .theme-toggle button:hover { color: var(--text); }
+  }
+  .theme-toggle button.active { background: var(--primary-dim); color: var(--primary-hover); }
   .contact-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
   .contact-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto auto auto; gap: 8px; align-items: center; padding: 8px; background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 4px; }
   .contact-row input { padding: 7px 10px; font-size: 13px; }
@@ -710,7 +748,6 @@
       transform: translateY(20px);
       min-width: 0;
       max-width: none;
-      background: #0a0c0d;     /* darker than --bg-elev */
       padding: 18px 16px;      /* taller box on mobile - more breathing room around the message */
     }
     .toast.show { transform: translateY(0); }
@@ -805,7 +842,7 @@
     </div>
   </div>
 
-  <p class="privacy-liner no-print"><strong>Privacy:</strong> Everything you enter here stays in your browser's local storage. Nothing is uploaded to a server or shared with anyone else. Clearing your browser data will reset everything.</p>
+  <p class="privacy-liner no-print">Everything you enter here stays in your browser's local storage. Nothing is uploaded to a server or shared with anyone else. Clearing your browser data will reset everything.</p>
 
   <div class="actions-bar no-print">
     <div class="totals">
@@ -833,15 +870,24 @@
     </div>
     <div class="modal-body">
       <div class="settings-section">
+        <div class="settings-section-title">Email Contacts</div>
+        <div class="settings-section-hint">Save email addresses of colleagues you frequently send claims to. Check "Default" to auto-select them when emailing.</div>
+        <div id="contactList" class="contact-list"></div>
+        <button type="button" class="add-contact-btn" data-action="add-contact">+ Add Contact</button>
+      </div>
+      <div class="settings-section">
         <div class="settings-section-title">Base Currency</div>
         <div class="settings-section-hint">Your home currency. Totals, the PDF, and the email summary all use this. Foreign-currency expenses convert to it via live FX rates.</div>
         <select id="baseCurrencySelect" class="base-currency-select"></select>
       </div>
       <div class="settings-section">
-        <div class="settings-section-title">Email Contacts</div>
-        <div class="settings-section-hint">Save email addresses of colleagues you frequently send claims to. Check "Default" to auto-select them when emailing.</div>
-        <div id="contactList" class="contact-list"></div>
-        <button type="button" class="add-contact-btn" data-action="add-contact">+ Add Contact</button>
+        <div class="settings-section-title">Theme</div>
+        <div class="settings-section-hint">System follows your operating system's appearance.</div>
+        <div class="theme-toggle">
+          <button type="button" data-theme-choice="system">System</button>
+          <button type="button" data-theme-choice="light">Light</button>
+          <button type="button" data-theme-choice="dark">Dark</button>
+        </div>
       </div>
       <div class="settings-section settings-section-privacy">
         <div class="settings-section-title">Privacy</div>
@@ -920,6 +966,7 @@ var CONTACTS_KEY = 'qanvast_claim_contacts_v1';
 var CONTACTS_SEEDED_KEY = 'qanvast_claim_contacts_seeded_v1';
 var BASE_CURRENCY_KEY = 'qanvast_claim_base_currency_v1';
 var LAST_LOAD_KEY = 'qanvast_claim_last_load_v1';
+var THEME_KEY = 'qanvast_claim_theme_v1';
 var REFRESH_PROMPT_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
 var DEFAULT_SEED_CONTACTS = [
   { name: 'Chloe', email: 'chloe.lam@qanvast.com', isDefault: true, isCc: false },
@@ -934,6 +981,30 @@ try {
   if (bc && ALL_CURRENCIES.indexOf(bc) !== -1) baseCurrency = bc;
 } catch (e) {}
 function saveBaseCurrency() { try { localStorage.setItem(BASE_CURRENCY_KEY, baseCurrency); } catch (e) {} }
+
+// Theme: 'system' | 'light' | 'dark'. Default 'system' follows the OS appearance.
+// Loaded and applied BEFORE init() so the first paint is correct - no FOUC.
+var theme = 'system';
+try {
+  var savedTheme = localStorage.getItem(THEME_KEY);
+  if (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system') theme = savedTheme;
+} catch (e) {}
+function applyTheme() {
+  var effective = theme;
+  if (theme === 'system') {
+    effective = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+  }
+  document.documentElement.classList.toggle('theme-light', effective === 'light');
+}
+applyTheme();
+// React to OS theme changes only when the user is on 'system'
+if (window.matchMedia) {
+  var mql = window.matchMedia('(prefers-color-scheme: light)');
+  var onSystemChange = function() { if (theme === 'system') applyTheme(); };
+  if (mql.addEventListener) mql.addEventListener('change', onSystemChange);
+  else if (mql.addListener) mql.addListener(onSystemChange); // older Safari
+}
+
 // Sync the totals-bar currency label before init() runs, so returning MY users don't
 // see a flash of the HTML-default "SGD" before recalcTotal() is called.
 (function() { var el = document.getElementById('totalCurrency'); if (el) el.textContent = baseCurrency; })();
@@ -1800,9 +1871,31 @@ function openPicker(trigger) {
   var popover = document.createElement('div');
   popover.className = 'date-popover active'; popover.id = 'activePopover';
   popover.addEventListener('click', function(e){ e.stopPropagation(); });
-  trigger.parentElement.appendChild(popover);
+  // Append to body so the popover isn't clipped by any ancestor's overflow rule.
+  // #itemsList uses overflow:clip to round its item-row corners cleanly, which would
+  // otherwise truncate any popover spawned from an item-row date picker.
+  document.body.appendChild(popover);
   renderPickerBody(popover, trigger);
+  positionPopoverAgainstTrigger(popover, trigger);
   setTimeout(function(){ document.addEventListener('click', outsideClickHandler); }, 0);
+}
+
+// Place the popover at the trigger's bottom-left using document coordinates (viewport
+// rect + scroll offset). After layout, nudge left if the popover would overflow the
+// viewport right edge; cap so it never sits flush against the left edge either.
+function positionPopoverAgainstTrigger(popover, trigger) {
+  var rect = trigger.getBoundingClientRect();
+  popover.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+  popover.style.left = (rect.left + window.scrollX) + 'px';
+  requestAnimationFrame(function() {
+    if (!popover.parentNode) return;
+    var popRect = popover.getBoundingClientRect();
+    var rightOverflow = popRect.right - (window.innerWidth - 8);
+    if (rightOverflow > 0) {
+      var newLeft = parseFloat(popover.style.left) - rightOverflow;
+      popover.style.left = Math.max(8, newLeft) + 'px';
+    }
+  });
 }
 
 function closePicker() {
@@ -2227,8 +2320,32 @@ function generateHTML() { if (!validateForm()) return; openPreview(); }
 function openSettings() {
   renderContactList();
   renderBaseCurrencySelect();
+  renderThemeToggle();
   document.getElementById('settingsOverlay').classList.add('active');
   document.body.style.overflow = 'hidden';
+}
+
+// Sync the active button to current `theme` value and wire click handlers (once).
+var themeToggleListenersAttached = false;
+function renderThemeToggle() {
+  var buttons = document.querySelectorAll('.theme-toggle button[data-theme-choice]');
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].classList.toggle('active', buttons[i].dataset.themeChoice === theme);
+  }
+  if (themeToggleListenersAttached) return;
+  themeToggleListenersAttached = true;
+  for (var j = 0; j < buttons.length; j++) {
+    (function(btn) {
+      btn.addEventListener('click', function() {
+        var choice = btn.dataset.themeChoice;
+        if (choice === theme) return;
+        theme = choice;
+        try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+        applyTheme();
+        renderThemeToggle();
+      });
+    })(buttons[j]);
+  }
 }
 
 // Populate the Base Currency dropdown from ALL_CURRENCIES and wire up the change handler.
