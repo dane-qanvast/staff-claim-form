@@ -968,6 +968,94 @@ var BASE_CURRENCY_KEY = 'qanvast_claim_base_currency_v1';
 var LAST_LOAD_KEY = 'qanvast_claim_last_load_v1';
 var THEME_KEY = 'qanvast_claim_theme_v1';
 var REFRESH_PROMPT_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// IndexedDB stores receipt attachments across page reloads. localStorage isn't suitable
+// because receipts (base64 image/PDF data) easily exceed its ~5 MB per-origin quota.
+// Each record: { id, itemId, name, type, size, dataUrl }. Object store keyed by id;
+// itemId is just a regular field used to group records back to their item on load.
+// All IDB ops are async + best-effort: if it fails (private mode, etc.), the app
+// falls back to current session-only behavior - no user-facing error.
+var IDB_NAME = 'qanvast_claim_v1';
+var IDB_STORE_ATTACHMENTS = 'attachments';
+var idbOpenPromise = null;
+function openIDB() {
+  if (idbOpenPromise) return idbOpenPromise;
+  idbOpenPromise = new Promise(function(resolve, reject) {
+    if (!window.indexedDB) { reject(new Error('IndexedDB unavailable')); return; }
+    var req;
+    try { req = indexedDB.open(IDB_NAME, 1); }
+    catch (e) { reject(e); return; }
+    req.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains(IDB_STORE_ATTACHMENTS)) {
+        db.createObjectStore(IDB_STORE_ATTACHMENTS, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = function() { resolve(req.result); };
+    req.onerror = function() { reject(req.error || new Error('IDB open failed')); };
+    req.onblocked = function() { reject(new Error('IDB open blocked')); };
+  });
+  // If the open ever rejects, clear the cached promise so a later call can retry
+  idbOpenPromise.catch(function() { idbOpenPromise = null; });
+  return idbOpenPromise;
+}
+function idbPutAttachment(itemId, att) {
+  return openIDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx = db.transaction(IDB_STORE_ATTACHMENTS, 'readwrite');
+      var record = { id: att.id, itemId: itemId, name: att.name, type: att.type, size: att.size, dataUrl: att.dataUrl };
+      var req = tx.objectStore(IDB_STORE_ATTACHMENTS).put(record);
+      req.onsuccess = function() { resolve(); };
+      req.onerror = function() { reject(req.error); };
+    });
+  });
+}
+function idbDeleteAttachment(attId) {
+  return openIDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx = db.transaction(IDB_STORE_ATTACHMENTS, 'readwrite');
+      var req = tx.objectStore(IDB_STORE_ATTACHMENTS).delete(attId);
+      req.onsuccess = function() { resolve(); };
+      req.onerror = function() { reject(req.error); };
+    });
+  });
+}
+function idbDeleteAttachmentsForItem(itemId) {
+  return openIDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx = db.transaction(IDB_STORE_ATTACHMENTS, 'readwrite');
+      var req = tx.objectStore(IDB_STORE_ATTACHMENTS).openCursor();
+      req.onsuccess = function(e) {
+        var cursor = e.target.result;
+        if (!cursor) { resolve(); return; }
+        if (cursor.value && cursor.value.itemId === itemId) cursor.delete();
+        cursor.continue();
+      };
+      req.onerror = function() { reject(req.error); };
+    });
+  });
+}
+function idbGetAllAttachments() {
+  return openIDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx = db.transaction(IDB_STORE_ATTACHMENTS, 'readonly');
+      var req = tx.objectStore(IDB_STORE_ATTACHMENTS).getAll();
+      req.onsuccess = function() { resolve(req.result || []); };
+      req.onerror = function() { reject(req.error); };
+    });
+  });
+}
+function idbClearAttachments() {
+  return openIDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx = db.transaction(IDB_STORE_ATTACHMENTS, 'readwrite');
+      var req = tx.objectStore(IDB_STORE_ATTACHMENTS).clear();
+      req.onsuccess = function() { resolve(); };
+      req.onerror = function() { reject(req.error); };
+    });
+  });
+}
+
 var DEFAULT_SEED_CONTACTS = [
   { name: 'Chloe', email: 'chloe.lam@qanvast.com', isDefault: true, isCc: false },
   { name: 'Vivien', email: 'vivien.foo@qanvast.com', isDefault: true, isCc: false }
@@ -1113,7 +1201,10 @@ function loadFormState() {
   return false;
 }
 
-function clearFormState() { try { localStorage.removeItem(FORM_STATE_KEY); } catch (e) {} }
+function clearFormState() {
+  try { localStorage.removeItem(FORM_STATE_KEY); } catch (e) {}
+  idbClearAttachments().catch(function() { /* no-op */ });
+}
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function escapeHTML(str) {
@@ -1191,6 +1282,7 @@ function addItem() {
 function removeItem(id) {
   items = items.filter(function(i){ return i.id !== id; });
   if (expandedItemId === id) expandedItemId = items.length > 0 ? items[0].id : null;
+  idbDeleteAttachmentsForItem(id).catch(function() { /* no-op */ });
   render();
   saveFormState();
 }
@@ -1398,6 +1490,9 @@ function attachFileToItem(itemId, file) {
       dataUrl: result.dataUrl
     };
     item.attachments.push(att);
+    // Persist to IndexedDB so it survives a page refresh. Best-effort; if IDB is
+    // unavailable the attachment still works in this session.
+    idbPutAttachment(item.id, att).catch(function() { /* no-op */ });
     render();
     showToast('Attached: ' + att.name);
   }).catch(function(err) {
@@ -1409,6 +1504,7 @@ function removeAttachment(itemId, attId) {
   var item = items.find(function(i){ return i.id === itemId; });
   if (!item || !item.attachments) return;
   item.attachments = item.attachments.filter(function(a){ return a.id !== attId; });
+  idbDeleteAttachment(attId).catch(function() { /* no-op */ });
   render();
 }
 
@@ -3005,6 +3101,31 @@ function init() {
     for (var i = 0; i < triggers.length; i++) updatePickerDisplay(triggers[i]);
     render();
     showToast('Restored your previous draft');
+    // Receipts live in IndexedDB (too large for localStorage). Load them async and
+    // merge back into items - the form is already interactive; receipts appear as
+    // soon as the DB returns. If IDB is unavailable we just keep the empty arrays.
+    idbGetAllAttachments().then(function(records) {
+      if (!records || records.length === 0) return;
+      var byItem = {};
+      var validItemIds = {};
+      for (var k = 0; k < items.length; k++) validItemIds[items[k].id] = true;
+      var orphans = [];
+      for (var r = 0; r < records.length; r++) {
+        var rec = records[r];
+        if (validItemIds[rec.itemId]) {
+          if (!byItem[rec.itemId]) byItem[rec.itemId] = [];
+          byItem[rec.itemId].push({ id: rec.id, name: rec.name, type: rec.type, size: rec.size, dataUrl: rec.dataUrl });
+        } else {
+          orphans.push(rec.id);
+        }
+      }
+      for (var ii = 0; ii < items.length; ii++) {
+        if (byItem[items[ii].id]) items[ii].attachments = byItem[items[ii].id];
+      }
+      // Clean up any records pointing at items that no longer exist
+      for (var o = 0; o < orphans.length; o++) idbDeleteAttachment(orphans[o]).catch(function() {});
+      render();
+    }).catch(function() { /* IDB unavailable - leave attachments empty */ });
   } else {
     addItem();
   }
