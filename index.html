@@ -297,18 +297,35 @@
     .preview-frame { border: none; height: auto; }
   }
 
-  /* Image lightbox - tapping a receipt thumbnail opens the image in-page rather than a new tab.
-     PDFs still open in a new tab (browsers render PDFs well natively). */
+  /* Lightbox - tapping a receipt thumbnail opens images or PDFs in-page rather than a new tab.
+     Toggle .show-pdf on the overlay to swap between img view and iframe view. PDFs use a Blob
+     URL (more reliable than data URLs in iframes, especially on iOS Safari). */
   .lightbox-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(4px); z-index: 2500; display: none; align-items: center; justify-content: center; padding: 24px; }
   .lightbox-overlay.active { display: flex; }
-  .lightbox-close { position: absolute; top: 16px; right: 16px; width: 40px; height: 40px; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.2); border-radius: 3px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; transition: background 0.15s; z-index: 1; }
+  .lightbox-close { position: absolute; top: 16px; right: 16px; width: 40px; height: 40px; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.2); border-radius: 3px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; transition: background 0.15s; z-index: 2; }
   @media (hover: hover) { .lightbox-close:hover { background: rgba(0,0,0,0.8); border-color: rgba(255,255,255,0.4); } }
-  .lightbox-img { max-width: 100%; max-height: calc(100% - 60px); object-fit: contain; display: block; user-select: none; -webkit-user-drag: none; }
-  .lightbox-caption { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.88); font-size: 13px; background: rgba(0,0,0,0.55); padding: 6px 14px; border-radius: 3px; max-width: calc(100vw - 80px); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+  .lightbox-img { max-width: 100%; max-height: calc(100% - 100px); object-fit: contain; display: block; user-select: none; -webkit-user-drag: none; }
+  .lightbox-pdf { width: 100%; height: calc(100% - 90px); max-width: 1200px; border: none; background: white; border-radius: 2px; display: none; }
+  .lightbox-overlay.show-pdf .lightbox-img { display: none; }
+  .lightbox-overlay.show-pdf .lightbox-pdf { display: block; }
+  /* Info panel at the bottom: vendor + claim amount on the top row, description and
+     date underneath. Gives the viewer the same context as the form summary so they
+     can validate the amount against what's on the receipt without flipping back. */
+  .lightbox-caption { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.92); font-size: 13px; background: rgba(0,0,0,0.65); padding: 10px 16px; border-radius: 3px; max-width: min(720px, calc(100vw - 40px)); width: max-content; pointer-events: none; backdrop-filter: blur(2px); line-height: 1.4; }
+  .lightbox-caption-primary { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .lightbox-caption-vendor { font-weight: 600; color: white; }
+  .lightbox-caption-amount { font-weight: 700; color: var(--primary-hover); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .lightbox-caption-amount-base { font-weight: 500; color: rgba(255,255,255,0.65); font-size: 11px; margin-left: 4px; }
+  .lightbox-caption-secondary { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 4px; text-align: center; }
+  .lightbox-caption-sep { color: rgba(255,255,255,0.35); margin: 0 6px; }
+  .lightbox-caption:empty { display: none; }
   @media (max-width: 640px) {
     .lightbox-overlay { padding: 12px; }
     .lightbox-close { top: 12px; right: 12px; width: 36px; height: 36px; }
-    .lightbox-caption { bottom: 12px; font-size: 12px; }
+    .lightbox-img { max-height: calc(100% - 96px); }
+    .lightbox-pdf { height: calc(100% - 86px); }
+    .lightbox-caption { bottom: 12px; font-size: 12px; padding: 8px 12px; }
+    .lightbox-caption-primary { gap: 12px; }
   }
 
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 1500; display: none; align-items: center; justify-content: center; padding: 24px; }
@@ -360,6 +377,50 @@
   .picker-row .picker-badges { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
   .picker-empty { text-align: center; padding: 24px; color: var(--text-mute); font-size: 13px; }
   .picker-empty a { color: var(--primary); cursor: pointer; text-decoration: underline; }
+
+  /* Review modal - shown after Email Claim is clicked, before recipient picker. Lets
+     staff verify each item's amount against its receipt thumbnails side-by-side. */
+  /* Snapshot mode banner - shown when the app is opened from an exported editable HTML.
+     Hidden by default; html.snapshot-mode toggles it on. */
+  .snapshot-banner { display: none; align-items: center; gap: 10px; background: var(--primary-dim); color: var(--text); padding: 10px 14px; border-radius: 4px; font-size: 13px; margin-bottom: 16px; border-left: 3px solid var(--primary); line-height: 1.5; }
+  .snapshot-banner svg { color: var(--primary-hover); flex-shrink: 0; }
+  .snapshot-banner strong { color: var(--text-heading); }
+  html.snapshot-mode .snapshot-banner { display: flex; }
+  /* Visibility utilities for snapshot mode: hide finance-irrelevant buttons (Reset,
+     Preview) and swap the primary action label from "Generate Email" to "Download PDF". */
+  .snapshot-only { display: none; }
+  html.snapshot-mode .snapshot-only { display: inline; }
+  html.snapshot-mode .snapshot-hide { display: none; }
+
+  .review-modal { max-width: 760px; }
+  .review-intro { font-size: 13px; color: var(--text-dim); margin-bottom: 14px; line-height: 1.5; }
+  .review-summary { background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .review-summary-total { font-size: 17px; font-weight: 700; color: var(--text-heading); font-variant-numeric: tabular-nums; }
+  .review-summary-meta { font-size: 12px; color: var(--text-dim); }
+  .review-items { display: flex; flex-direction: column; gap: 12px; }
+  .review-item-card { background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 4px; padding: 14px; }
+  .review-item-header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .review-item-num { font-size: 11px; font-weight: 600; color: var(--primary-hover); text-transform: uppercase; letter-spacing: 0.06em; }
+  .review-item-amount { font-size: 18px; font-weight: 700; color: var(--text-heading); font-variant-numeric: tabular-nums; }
+  .review-item-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+  .review-item-details { display: flex; flex-direction: column; gap: 8px; }
+  .review-detail-row { display: flex; gap: 8px; font-size: 13px; align-items: baseline; }
+  .review-detail-label { color: var(--text-mute); width: 80px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; padding-top: 2px; }
+  .review-detail-value { color: var(--text); flex: 1; min-width: 0; word-break: break-word; }
+  .review-receipts { display: flex; flex-direction: column; gap: 8px; }
+  .review-receipts-label { font-size: 10px; color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.05em; }
+  .review-thumb-grid { display: flex; gap: 6px; flex-wrap: wrap; }
+  .review-thumb { width: 78px; height: 78px; border-radius: 3px; overflow: hidden; cursor: pointer; border: 1px solid var(--border); background: var(--bg-elev); display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0; transition: border-color 0.15s; }
+  @media (hover: hover) { .review-thumb:hover { border-color: var(--primary); } }
+  .review-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .review-thumb.pdf-thumb { flex-direction: column; gap: 3px; color: var(--text-dim); padding: 6px 4px; }
+  .review-thumb.pdf-thumb svg { color: var(--danger); flex-shrink: 0; }
+  .review-thumb.pdf-thumb .pdf-name { font-size: 9px; color: var(--text-dim); text-align: center; word-break: break-all; line-height: 1.2; overflow: hidden; }
+  .review-no-receipts { color: var(--text-mute); font-size: 12px; font-style: italic; padding: 6px 0; }
+  @media (max-width: 640px) {
+    .review-item-body { grid-template-columns: 1fr; gap: 12px; }
+    .review-thumb { width: 64px; height: 64px; }
+  }
 
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
@@ -432,13 +493,15 @@
   /* Step 1 on desktop: PDF auto-saves to Downloads folder, so no Download button needed and the
      label reads past tense. Mobile media query (below) re-enables the button and swaps the label. */
   .step-label-mobile { display: none; }
-  .claim-step-btn[data-action="redownload-pdf-btn"] { display: none; }
+  .claim-step-btn[data-action="redownload-pdf-btn"], .claim-step-btn[data-action="redownload-html-btn"] { display: none; }
   /* Hint text below the filename - acts as the affordance for the whole-card-click re-download */
   .claim-step-hint { color: var(--primary); font-size: 12px; line-height: 1.4; }
-  /* Step 1 card is clickable on both desktop (whole card) and mobile (whole card OR Download button) */
-  .claim-step[data-action="redownload-pdf"] { cursor: pointer; user-select: none; }
+  /* Description line - explains WHY a downloaded file matters (used for the editable HTML step) */
+  .claim-step-desc { color: var(--text-dim); font-size: 12px; line-height: 1.5; margin-top: 4px; }
+  /* Download-step cards are clickable on both desktop (whole card) and mobile (whole card OR Download button) */
+  .claim-step[data-action^="redownload"] { cursor: pointer; user-select: none; }
   @media (hover: hover) {
-    .claim-step[data-action="redownload-pdf"]:hover { background: rgba(5, 165, 148, 0.13); }
+    .claim-step[data-action^="redownload"]:hover { background: rgba(5, 165, 148, 0.13); }
   }
 
   /* Native date inputs (hidden by default, shown on mobile)
@@ -694,16 +757,16 @@
       padding: 12px 16px;
       font-size: 14px;
     }
-    /* Step 1 on mobile: re-enable the Download button (hidden by desktop base rule) and swap label */
-    .claim-step-btn[data-action="redownload-pdf-btn"] { display: inline-flex; }
+    /* Download steps on mobile: re-enable the Download button (hidden by desktop base rule) and swap label */
+    .claim-step-btn[data-action="redownload-pdf-btn"], .claim-step-btn[data-action="redownload-html-btn"] { display: inline-flex; }
     .step-label-desktop { display: none; }
     .step-label-mobile { display: inline; }
     /* The desktop "Click here if..." hint is replaced by the visible Download button on mobile */
     .claim-step-hint { display: none; }
-    .claim-step[data-action="redownload-pdf"] {
+    .claim-step[data-action^="redownload"] {
       -webkit-tap-highlight-color: rgba(5, 165, 148, 0.12);
     }
-    .claim-step[data-action="redownload-pdf"]:active { background: rgba(5, 165, 148, 0.18); }
+    .claim-step[data-action^="redownload"]:active { background: rgba(5, 165, 148, 0.18); }
 
     /* Chrome-recommendation liner: surfaced only when html.non-chrome is set (see JS). */
     html.non-chrome .chrome-recommend {
@@ -781,6 +844,10 @@
 </head>
 <body>
 <div class="container">
+  <div id="snapshotBanner" class="snapshot-banner no-print" role="status">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+    <span class="snapshot-banner-text">Viewing snapshot of <strong id="snapshotBannerWho"></strong>. Changes live in memory only — re-export when done.</span>
+  </div>
   <div class="header no-print">
     <div class="header-title">
       <h1>Staff Claim Email Generator</h1>
@@ -850,9 +917,9 @@
       <span class="totals-value"><span id="totalCurrency">SGD</span> <span id="grandTotal">0.00</span></span>
     </div>
     <div class="actions-group">
-      <button class="btn btn-secondary" data-action="reset">Reset</button>
-      <button class="btn btn-secondary" data-action="view-html">Preview</button>
-      <button class="btn btn-primary" data-action="email-claim">Generate Email</button>
+      <button class="btn btn-secondary snapshot-hide" data-action="reset">Reset</button>
+      <button class="btn btn-secondary snapshot-hide" data-action="view-html">Preview</button>
+      <button class="btn btn-primary" data-action="email-claim"><span class="snapshot-hide">Generate Email</span><span class="snapshot-only">Download PDF</span></button>
     </div>
     <div class="chrome-recommend"><svg class="chrome-recommend-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>Chrome browser recommended to generate PDF and pre-composed email.</span></div>
   </div>
@@ -900,6 +967,26 @@
   </div>
 </div>
 
+<div id="reviewClaimOverlay" class="modal-overlay">
+  <div class="modal review-modal">
+    <div class="modal-header">
+      <h2>Review before proceeding</h2>
+      <button type="button" class="modal-close" data-action="close-review" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="review-intro">Compare each item's amount against its receipt. Catching errors here saves a round-trip with finance.</div>
+      <div class="review-summary" id="reviewSummary"></div>
+      <div class="review-items" id="reviewItems"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-action="close-review">Go back to fix</button>
+      <button class="btn btn-primary" data-action="confirm-review">Looks good, proceed</button>
+    </div>
+  </div>
+</div>
+
 <div id="recipientOverlay" class="modal-overlay">
   <div class="modal">
     <div class="modal-header">
@@ -922,7 +1009,7 @@
   <div class="preview-toolbar no-print">
     <h2>Claim Preview</h2>
     <div class="toolbar-actions">
-      <button class="btn btn-secondary" data-action="download-html">Download HTML</button>
+      <button class="btn btn-secondary" data-action="download-html">Download Editable HTML</button>
       <button class="btn btn-primary" data-action="print-preview">Download PDF</button>
       <button class="btn btn-secondary" data-action="close-preview">Close</button>
     </div>
@@ -935,11 +1022,23 @@
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
   </button>
   <img id="lightboxImg" class="lightbox-img" alt="">
+  <iframe id="lightboxPdf" class="lightbox-pdf" title="PDF preview"></iframe>
   <div class="lightbox-caption" id="lightboxCaption"></div>
 </div>
 
 <script>
 "use strict";
+
+// Snapshot architecture: the app can export an editable HTML that contains the
+// full app code PLUS the current claim data, baked in as window.EMBEDDED_CLAIM_STATE.
+// When such a file is opened, SNAPSHOT_MODE becomes true and the app loads from
+// the embedded state instead of localStorage, and suppresses claim-related writes
+// (so it doesn't clobber the viewer's own work-in-progress on this device).
+// APP_HTML_TEMPLATE is captured right now - before applyTheme() or any other
+// module-level code mutates the document - so re-exports start from a clean slate.
+var APP_HTML_TEMPLATE = null;
+try { APP_HTML_TEMPLATE = '<!DOCTYPE html>\n' + document.documentElement.outerHTML; } catch (e) {}
+var SNAPSHOT_MODE = (typeof window.EMBEDDED_CLAIM_STATE !== 'undefined' && window.EMBEDDED_CLAIM_STATE !== null);
 
 var EXPENSE_CATEGORIES = {
   'Marketing related': ['Advertising and Promotion', 'Entertainment', 'Gift', 'Marketing - Others'],
@@ -1000,6 +1099,7 @@ function openIDB() {
   return idbOpenPromise;
 }
 function idbPutAttachment(itemId, att) {
+  if (SNAPSHOT_MODE) return Promise.resolve();
   return openIDB().then(function(db) {
     return new Promise(function(resolve, reject) {
       var tx = db.transaction(IDB_STORE_ATTACHMENTS, 'readwrite');
@@ -1011,6 +1111,7 @@ function idbPutAttachment(itemId, att) {
   });
 }
 function idbDeleteAttachment(attId) {
+  if (SNAPSHOT_MODE) return Promise.resolve();
   return openIDB().then(function(db) {
     return new Promise(function(resolve, reject) {
       var tx = db.transaction(IDB_STORE_ATTACHMENTS, 'readwrite');
@@ -1021,6 +1122,7 @@ function idbDeleteAttachment(attId) {
   });
 }
 function idbDeleteAttachmentsForItem(itemId) {
+  if (SNAPSHOT_MODE) return Promise.resolve();
   return openIDB().then(function(db) {
     return new Promise(function(resolve, reject) {
       var tx = db.transaction(IDB_STORE_ATTACHMENTS, 'readwrite');
@@ -1046,6 +1148,7 @@ function idbGetAllAttachments() {
   });
 }
 function idbClearAttachments() {
+  if (SNAPSHOT_MODE) return Promise.resolve();
   return openIDB().then(function(db) {
     return new Promise(function(resolve, reject) {
       var tx = db.transaction(IDB_STORE_ATTACHMENTS, 'readwrite');
@@ -1068,7 +1171,7 @@ try {
   var bc = localStorage.getItem(BASE_CURRENCY_KEY);
   if (bc && ALL_CURRENCIES.indexOf(bc) !== -1) baseCurrency = bc;
 } catch (e) {}
-function saveBaseCurrency() { try { localStorage.setItem(BASE_CURRENCY_KEY, baseCurrency); } catch (e) {} }
+function saveBaseCurrency() { if (SNAPSHOT_MODE) return; try { localStorage.setItem(BASE_CURRENCY_KEY, baseCurrency); } catch (e) {} }
 
 // Theme: 'system' | 'light' | 'dark'. Default 'system' follows the OS appearance.
 // Loaded and applied BEFORE init() so the first paint is correct - no FOUC.
@@ -1145,6 +1248,7 @@ function saveRecents() { try { localStorage.setItem(RECENT_KEY, JSON.stringify(r
 function saveContacts() { try { localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts)); } catch (e) {} }
 
 function addRecent(field, value) {
+  if (SNAPSHOT_MODE) return;
   if (!value || !value.trim()) return;
   var v = value.trim();
   if (!recents[field]) recents[field] = [];
@@ -1153,6 +1257,7 @@ function addRecent(field, value) {
 }
 
 function removeRecent(field, value) {
+  if (SNAPSHOT_MODE) return;
   if (!recents[field]) return;
   recents[field] = recents[field].filter(function(v){ return v !== value; });
   saveRecents();
@@ -1164,6 +1269,7 @@ var rateCache = {};
 var selectedRecipients = [];
 
 function saveFormState() {
+  if (SNAPSHOT_MODE) return;
   try {
     var itemsCopy = items.map(function(item) {
       var copy = {};
@@ -1202,6 +1308,7 @@ function loadFormState() {
 }
 
 function clearFormState() {
+  if (SNAPSHOT_MODE) return;
   try { localStorage.removeItem(FORM_STATE_KEY); } catch (e) {}
   idbClearAttachments().catch(function() { /* no-op */ });
 }
@@ -1513,30 +1620,87 @@ function previewAttachment(itemId, attId) {
   if (!item || !item.attachments) return;
   var att = item.attachments.find(function(a){ return a.id === attId; });
   if (!att) return;
-  // Images open in an in-page lightbox; PDFs still get a new tab where the browser's
-  // native PDF viewer offers pan/zoom/print/save.
-  if (att.type && att.type.indexOf('image/') === 0) {
-    openImageLightbox(att);
-    return;
-  }
-  try {
-    var w = window.open('', '_blank');
-    if (w) {
-      w.document.title = att.name;
-      w.document.body.style.margin = '0';
-      w.document.body.innerHTML = '<embed src="' + att.dataUrl + '" type="application/pdf" style="width:100vw;height:100vh;border:none;">';
-    }
-  } catch (e) {}
+  // Both images and PDFs open in the in-page lightbox now. PDFs use a Blob URL
+  // (more reliable than data URLs in iframes - particularly on iOS Safari, which
+  // sometimes refuses to render data:application/pdf in iframes).
+  openImageLightbox(att, item);
 }
 
-function openImageLightbox(att) {
+// Tracks the active PDF blob URL so we can revoke it on close. Object URLs leak
+// memory if you don't revoke them - browsers hold the underlying Blob alive
+// until the URL is freed.
+var lightboxBlobUrl = null;
+
+// Build the lightbox caption innerHTML from the item the receipt belongs to.
+// Top row: vendor (left) + claim amount (right). Bottom row: description and date.
+// For foreign-currency items, the foreign amount is shown (matches the receipt) with
+// a small base-currency equivalent next to it, so the viewer can cross-check both ways.
+function buildLightboxCaption(item) {
+  if (!item) return '';
+  var vendor = (item.vendor || '').trim();
+  var description = (item.description || '').trim();
+  var dateStr = item.date ? formatDateDisplay(item.date) : '';
+  // Amount: foreign-currency items show foreign + small base equivalent; otherwise just base.
+  var amountHtml = '';
+  var baseSgd = getItemSGD(item);
+  if (item.currencyMode === 'foreign' && item.foreignCurrency && item.foreignAmount) {
+    var foreignAmt = parseFloat(item.foreignAmount);
+    if (!isNaN(foreignAmt) && foreignAmt > 0) {
+      amountHtml = escapeHTML(item.foreignCurrency) + ' ' + foreignAmt.toFixed(2)
+        + '<span class="lightbox-caption-amount-base">&asymp; ' + escapeHTML(baseCurrency) + ' ' + baseSgd.toFixed(2) + '</span>';
+    }
+  }
+  if (!amountHtml) amountHtml = escapeHTML(baseCurrency) + ' ' + baseSgd.toFixed(2);
+
+  var primary = '<div class="lightbox-caption-primary">'
+    + '<span class="lightbox-caption-vendor">' + (escapeHTML(vendor) || '&mdash;') + '</span>'
+    + '<span class="lightbox-caption-amount">' + amountHtml + '</span>'
+    + '</div>';
+
+  // Secondary row: description and date, separated by middle-dot. Omit either if empty.
+  var secondaryParts = [];
+  if (description) secondaryParts.push(escapeHTML(description));
+  if (dateStr) secondaryParts.push(escapeHTML(dateStr));
+  var secondary = secondaryParts.length > 0
+    ? '<div class="lightbox-caption-secondary">' + secondaryParts.join('<span class="lightbox-caption-sep">&middot;</span>') + '</div>'
+    : '';
+  return primary + secondary;
+}
+
+function openImageLightbox(att, item) {
   var overlay = document.getElementById('lightboxOverlay');
   var img = document.getElementById('lightboxImg');
+  var pdf = document.getElementById('lightboxPdf');
   var caption = document.getElementById('lightboxCaption');
-  if (!overlay || !img) return;
-  img.src = att.dataUrl;
-  img.alt = att.name || 'Receipt';
-  if (caption) caption.textContent = att.name || '';
+  if (!overlay) return;
+  // Defensive: clear any stale blob URL before assigning a new one. Closing
+  // already revokes, but a rapid open->open without close would leak otherwise.
+  if (lightboxBlobUrl) { try { URL.revokeObjectURL(lightboxBlobUrl); } catch (e) {} lightboxBlobUrl = null; }
+  var isPdf = att.type === 'application/pdf';
+  if (isPdf) {
+    if (!pdf) return;
+    try {
+      var buf = dataUrlToArrayBuffer(att.dataUrl);
+      var blob = new Blob([buf], { type: 'application/pdf' });
+      lightboxBlobUrl = URL.createObjectURL(blob);
+    } catch (e) {
+      // Decode failed - fall back to data URL directly. Modern desktop browsers
+      // generally cope; iOS may show a blank or download prompt, but that's
+      // strictly no worse than the previous new-tab behavior.
+      lightboxBlobUrl = null;
+      pdf.src = att.dataUrl;
+    }
+    if (lightboxBlobUrl) pdf.src = lightboxBlobUrl;
+    pdf.title = att.name || 'PDF preview';
+    overlay.classList.add('show-pdf');
+  } else {
+    if (!img) return;
+    img.src = att.dataUrl;
+    img.alt = att.name || 'Receipt';
+    overlay.classList.remove('show-pdf');
+  }
+  // Fill caption with item context if we have it; otherwise leave empty (CSS hides via :empty).
+  if (caption) caption.innerHTML = buildLightboxCaption(item);
   overlay.classList.add('active');
   overlay.setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
@@ -1548,11 +1712,17 @@ function closeImageLightbox() {
   overlay.classList.remove('active');
   overlay.setAttribute('aria-hidden', 'true');
   document.body.style.overflow = '';
-  // Drop the (potentially large base64) data URL from memory after the close animation
+  // Drop sources, clear caption, and revoke the PDF blob URL after the close animation
   setTimeout(function() {
     if (!overlay.classList.contains('active')) {
       var img = document.getElementById('lightboxImg');
+      var pdf = document.getElementById('lightboxPdf');
+      var caption = document.getElementById('lightboxCaption');
       if (img) img.removeAttribute('src');
+      if (pdf) pdf.removeAttribute('src');
+      if (caption) caption.innerHTML = '';
+      if (lightboxBlobUrl) { try { URL.revokeObjectURL(lightboxBlobUrl); } catch (e) {} lightboxBlobUrl = null; }
+      overlay.classList.remove('show-pdf');
     }
   }, 100);
 }
@@ -1739,6 +1909,28 @@ function redownloadCachedPdf() {
   setTimeout(function() { try { document.body.removeChild(a); } catch (e) {} }, 100);
 }
 
+// Parallel cache for the editable HTML so its "Download" affordance in Step 2 can re-trigger
+// the download without rebuilding the (large) HTML payload from scratch.
+var cachedHtmlUrl = null;
+var cachedHtmlFilename = null;
+function cacheHtmlBlob(blob, filename) {
+  if (cachedHtmlUrl) {
+    try { URL.revokeObjectURL(cachedHtmlUrl); } catch (e) {}
+  }
+  cachedHtmlUrl = URL.createObjectURL(blob);
+  cachedHtmlFilename = filename;
+}
+function redownloadCachedHtml() {
+  if (!cachedHtmlUrl) return;
+  var a = document.createElement('a');
+  a.href = cachedHtmlUrl;
+  a.download = cachedHtmlFilename || 'claim_editable.html';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() { try { document.body.removeChild(a); } catch (e) {} }, 100);
+}
+
 function render() {
   var list = document.getElementById('itemsList');
   var empty = document.getElementById('emptyState');
@@ -1782,7 +1974,7 @@ function render() {
     }
     var expandedClass = (expandedItemId === item.id) ? ' expanded' : '';
     var summarySpRef = getItemSummaryParts(item, idx);
-    html += '<div class="item-row' + expandedClass + '" data-item-id="' + item.id + '"><div class="item-summary"><span class="item-number">' + (idx+1) + '</span><div class="item-summary-main"><div class="item-summary-title' + (summarySpRef.hasVendor ? '' : ' is-empty') + '">' + summarySpRef.titleText + '</div><div class="item-summary-sub' + (summarySpRef.hasSub ? '' : ' is-empty') + '">' + summarySpRef.subText + '</div></div><div class="item-summary-amount' + (summarySpRef.hasAmount ? '' : ' is-empty') + '">' + summarySpRef.amountText + '</div><button type="button" class="item-remove" data-action="remove-item" aria-label="Remove">Remove</button><span class="item-toggle-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></div><div class="item-body"><div class="item-body-inner"><div class="item-grid"><div class="field"><label>Date</label><button type="button" class="date-picker" data-picker="date" data-item-date-id="' + item.id + '"><span class="dp-display placeholder">Select date</span><svg class="cal-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button><input type="date" class="date-native" data-item-date-id="' + item.id + '" value="' + (item.date || '') + '"></div><div class="field"><label>Vendor / Supplier<span class="req">*</span></label><input type="text" value="' + escapeHTML(item.vendor) + '" placeholder="e.g. Grab, Adobe" data-suggest="vendor" data-item-id="' + item.id + '" data-field="vendor" autocomplete="off" required><div class="suggestions" id="suggest-vendor-' + item.id + '"></div></div><div class="field"><label>Description / Receipt No.<span class="req">*</span></label><input type="text" value="' + escapeHTML(item.description) + '" placeholder="What was purchased and why" data-suggest="description" data-item-id="' + item.id + '" data-field="description" autocomplete="off" required><div class="suggestions" id="suggest-description-' + item.id + '"></div></div><div class="field"><label>Type of Expense<span class="req">*</span></label><select data-field="category" required><option value="">Select category...</option>' + cats + '</select></div><div class="field field-amount"><label>Amount<span class="req">*</span></label><div class="currency-mode"><button type="button" class="' + (item.currencyMode === 'sgd' ? 'active' : '') + '" data-mode="sgd">' + baseCurrency + ' only</button><button type="button" class="' + (item.currencyMode === 'foreign' ? 'active' : '') + '" data-mode="foreign">Foreign currency</button></div>' + amountBlock + '</div><div class="field"><label>Receipts<span class="req">*</span></label><div class="attach-dropzone" data-attach-zone><svg class="dropzone-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span class="dropzone-label-desktop">Drop, paste, or click to attach images / PDFs</span><span class="dropzone-label-mobile">+ Select</span></div><input type="file" multiple accept="image/*,application/pdf" data-attach-input style="display:none;"><div class="attach-list">' + attHtml + '</div></div></div><div class="item-remove-row"><button type="button" class="item-remove-mobile" data-action="remove-item" aria-label="Remove item">Remove</button></div></div></div></div>';
+    html += '<div class="item-row' + expandedClass + '" data-item-id="' + item.id + '"><div class="item-summary"><span class="item-number">' + (idx+1) + '</span><div class="item-summary-main"><div class="item-summary-title' + (summarySpRef.hasVendor ? '' : ' is-empty') + '">' + summarySpRef.titleText + '</div><div class="item-summary-sub' + (summarySpRef.hasSub ? '' : ' is-empty') + '">' + summarySpRef.subText + '</div></div><div class="item-summary-amount' + (summarySpRef.hasAmount ? '' : ' is-empty') + '">' + summarySpRef.amountText + '</div><button type="button" class="item-remove" data-action="remove-item" aria-label="Remove">Remove</button><span class="item-toggle-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></div><div class="item-body"><div class="item-body-inner"><div class="item-grid"><div class="field"><label>Vendor / Supplier<span class="req">*</span></label><input type="text" value="' + escapeHTML(item.vendor) + '" placeholder="e.g. Grab, Adobe" data-suggest="vendor" data-item-id="' + item.id + '" data-field="vendor" autocomplete="off" required><div class="suggestions" id="suggest-vendor-' + item.id + '"></div></div><div class="field"><label>Description / Receipt No.<span class="req">*</span></label><input type="text" value="' + escapeHTML(item.description) + '" placeholder="What was purchased and why" data-suggest="description" data-item-id="' + item.id + '" data-field="description" autocomplete="off" required><div class="suggestions" id="suggest-description-' + item.id + '"></div></div><div class="field"><label>Type of Expense<span class="req">*</span></label><select data-field="category" required><option value="">Select category...</option>' + cats + '</select></div><div class="field"><label>Date of Expense / Purchase</label><button type="button" class="date-picker" data-picker="date" data-item-date-id="' + item.id + '"><span class="dp-display placeholder">Select date</span><svg class="cal-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button><input type="date" class="date-native" data-item-date-id="' + item.id + '" value="' + (item.date || '') + '"></div><div class="field field-amount"><label>Amount<span class="req">*</span></label><div class="currency-mode"><button type="button" class="' + (item.currencyMode === 'sgd' ? 'active' : '') + '" data-mode="sgd">' + baseCurrency + ' only</button><button type="button" class="' + (item.currencyMode === 'foreign' ? 'active' : '') + '" data-mode="foreign">Foreign currency</button></div>' + amountBlock + '</div><div class="field"><label>Receipts<span class="req">*</span></label><div class="attach-dropzone" data-attach-zone><svg class="dropzone-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span class="dropzone-label-desktop">Drop, paste, or click to attach images / PDFs</span><span class="dropzone-label-mobile">+ Select</span></div><input type="file" multiple accept="image/*,application/pdf" data-attach-input style="display:none;"><div class="attach-list">' + attHtml + '</div></div></div><div class="item-remove-row"><button type="button" class="item-remove-mobile" data-action="remove-item" aria-label="Remove item">Remove</button></div></div></div></div>';
   }
   list.innerHTML = html;
 
@@ -2160,6 +2352,36 @@ function buildOutputHTML() {
     rateDisclaimer += '</ul><div class="rate-note">Rates reflect values at time of submission and may differ from final settlement rate. For reference, see <a href="https://www.oanda.com/currency-converter/en/" target="_blank" rel="noopener">OANDA Currency Converter</a>.</div></div>';
   }
 
+  // Receipt numbering for cross-references. Each receipt gets a sequential #N
+  // matching its position in the final PDF (images by item order, then PDF cover
+  // pages by item order - this mirrors the receiptSections loops below). Finance
+  // can search "Receipt #3" in their PDF viewer to jump to a specific receipt.
+  var receiptsByItemIdx = {};   // itemIdx -> [3, 5] for cross-refs in the summary
+  var receiptNumByAttId = {};   // att.id -> #N for the receipt page header
+  var rcount = 0;
+  for (var numI = 0; numI < items.length; numI++) {
+    var numAtts = items[numI].attachments || [];
+    for (var numJ = 0; numJ < numAtts.length; numJ++) {
+      if (numAtts[numJ].type && numAtts[numJ].type.indexOf('image/') === 0) {
+        rcount++;
+        receiptNumByAttId[numAtts[numJ].id] = rcount;
+        if (!receiptsByItemIdx[numI]) receiptsByItemIdx[numI] = [];
+        receiptsByItemIdx[numI].push(rcount);
+      }
+    }
+  }
+  for (var numI2 = 0; numI2 < items.length; numI2++) {
+    var numAtts2 = items[numI2].attachments || [];
+    for (var numJ2 = 0; numJ2 < numAtts2.length; numJ2++) {
+      if (numAtts2[numJ2].type === 'application/pdf') {
+        rcount++;
+        receiptNumByAttId[numAtts2[numJ2].id] = rcount;
+        if (!receiptsByItemIdx[numI2]) receiptsByItemIdx[numI2] = [];
+        receiptsByItemIdx[numI2].push(rcount);
+      }
+    }
+  }
+
   var itemRows = '';
   for (var i = 0; i < items.length; i++) {
     var item = items[i];
@@ -2168,8 +2390,8 @@ function buildOutputHTML() {
     var rate2 = parseFloat(item.manualRate) || item.autoRate || 0;
     var foreignLine = showForeign ? ('<div class="foreign">' + item.foreignCurrency + ' ' + parseFloat(item.foreignAmount).toFixed(2) + (rate2 ? ' @ ' + rate2.toFixed(4) : '') + '</div>') : '';
     var catTag = item.category ? ('<span class="category-tag">' + escapeHTML(item.category) + '</span>') : '-';
-    var attCount = (item.attachments || []).length;
-    var attBadge = attCount > 0 ? ('<div class="att-badge">' + attCount + ' receipt' + (attCount > 1 ? 's' : '') + ' attached</div>') : '';
+    var refs = receiptsByItemIdx[i] || [];
+    var attBadge = refs.length > 0 ? ('<div class="att-badge">&rarr; ' + (refs.length === 1 ? 'Receipt' : 'Receipts') + ' ' + refs.map(function(n){ return '#' + n; }).join(', ') + '</div>') : '';
     itemRows += '<tr><td>' + (i+1) + '</td><td>' + formatDate(item.date) + '</td><td>' + (escapeHTML(item.vendor) || '-') + '</td><td>' + catTag + '</td><td>' + (escapeHTML(item.description) || '-') + foreignLine + attBadge + '</td><td class="amount">' + sgd.toFixed(2) + '</td></tr>';
   }
 
@@ -2180,9 +2402,11 @@ function buildOutputHTML() {
     var imgs = rit.attachments.filter(function(a){ return a.type && a.type.indexOf('image/') === 0; });
     for (var rj = 0; rj < imgs.length; rj++) {
       var ratt = imgs[rj];
-      var rlabel = 'Receipt - Item ' + (ri+1) + ': ' + (escapeHTML(rit.vendor) || '');
-      if (imgs.length > 1) rlabel += ' (' + (rj+1) + ' of ' + imgs.length + ')';
-      receiptSections += '<div class="receipt-page"><div class="receipt-header">' + rlabel + '</div><div class="receipt-image"><img src="' + ratt.dataUrl + '"></div></div>';
+      var rnum = receiptNumByAttId[ratt.id];
+      var rmeta = 'Item ' + (ri+1) + ': ' + (escapeHTML(rit.vendor) || '-');
+      if (imgs.length > 1) rmeta += ' (' + (rj+1) + ' of ' + imgs.length + ')';
+      var rFormAmount = baseCurrency + ' ' + getItemSGD(rit).toFixed(2);
+      receiptSections += '<div class="receipt-page"><div class="receipt-header"><div class="receipt-header-left"><div class="receipt-num">Receipt #' + rnum + '</div><div class="receipt-meta">' + rmeta + '</div></div><div class="receipt-form-amount"><div class="receipt-form-label">Form amount</div><div class="receipt-form-value">' + rFormAmount + '</div></div></div><div class="receipt-image"><img src="' + ratt.dataUrl + '"></div></div>';
     }
   }
   // PDF placeholder pages (in the same order pdf-lib will append the actual content)
@@ -2192,12 +2416,14 @@ function buildOutputHTML() {
     var pdfs = pit.attachments.filter(function(a){ return a.type === 'application/pdf'; });
     for (var pj = 0; pj < pdfs.length; pj++) {
       var patt = pdfs[pj];
-      var plabel = 'Receipt - Item ' + (pi+1) + ': ' + (escapeHTML(pit.vendor) || '');
-      receiptSections += '<div class="receipt-page"><div class="receipt-header">' + plabel + '</div><div class="receipt-pdf-card"><svg class="pdf-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><div class="pdf-filename">' + escapeHTML(patt.name || 'document.pdf') + '</div><div class="pdf-note">PDF receipt attached - full content follows in the appended pages of this document.</div></div></div>';
+      var pnum = receiptNumByAttId[patt.id];
+      var pmeta = 'Item ' + (pi+1) + ': ' + (escapeHTML(pit.vendor) || '-');
+      var pFormAmount = baseCurrency + ' ' + getItemSGD(pit).toFixed(2);
+      receiptSections += '<div class="receipt-page"><div class="receipt-header"><div class="receipt-header-left"><div class="receipt-num">Receipt #' + pnum + '</div><div class="receipt-meta">' + pmeta + '</div></div><div class="receipt-form-amount"><div class="receipt-form-label">Form amount</div><div class="receipt-form-value">' + pFormAmount + '</div></div></div><div class="receipt-pdf-card"><svg class="pdf-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><div class="pdf-filename">' + escapeHTML(patt.name || 'document.pdf') + '</div><div class="pdf-note">PDF receipt attached - full content follows in the appended pages of this document.</div></div></div>';
     }
   }
 
-  return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Expense Claim - ' + escapeHTML(submittedBy) + ' - ' + formatMonth(month) + '</title><style>* { box-sizing: border-box; margin: 0; padding: 0; } body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1a1a1a; background: white; padding: 32px 16px; line-height: 1.5; } .page { max-width: 1000px; margin: 0 auto; background: white; padding: 48px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); border-radius: 4px; } .header { border-bottom: 3px solid #05a594; padding-bottom: 20px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; } .header-left { flex: 1; min-width: 0; } .header h1 { font-size: 26px; color: #024a42; margin-bottom: 4px; } .header .sub { color: #666; font-size: 16px; font-weight: 600; } .header-date { text-align: right; flex-shrink: 0; } .header-date .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 2px; } .header-date .value { font-size: 14px; font-weight: 600; color: #1f2937; } table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px; } th { background: #024a42; color: white; padding: 10px 12px; text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; } th:first-child { border-top-left-radius: 3px; } th:last-child { border-top-right-radius: 3px; text-align: right; } td { padding: 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; } tr:nth-child(even) td { background: #fafafa; } td.amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; } td.foreign { font-size: 11px; color: #6b7280; } .category-tag { display: inline-block; padding: 2px 8px; background: #c9eee9; color: #024a42; border-radius: 2px; font-size: 11px; font-weight: 500; } .totals-row td { background: #024a42 !important; color: white; font-weight: 700; font-size: 15px; padding: 14px 12px; } .totals-row td:first-child { border-bottom-left-radius: 3px; } .totals-row td:last-child { border-bottom-right-radius: 3px; text-align: right; } .rate-disclaimer { margin: -8px 0 24px; padding: 14px 16px; background: #fafafa; border: 1px solid #e5e7eb; border-radius: 3px; font-size: 11px; color: #4b5563; } .rate-disclaimer-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #024a42; margin-bottom: 6px; } .rate-disclaimer ul { list-style: none; padding: 0; margin: 0 0 6px 0; } .rate-disclaimer li { padding: 2px 0; font-variant-numeric: tabular-nums; } .rate-disclaimer .rate-source { color: #9ca3af; font-style: italic; } .rate-disclaimer a { color: #05a594; text-decoration: none; } .rate-disclaimer a:hover { text-decoration: underline; } .rate-disclaimer .rate-note { font-size: 10px; color: #9ca3af; font-style: italic; margin-top: 4px; padding-top: 6px; border-top: 1px dashed #e5e7eb; } .signature-section { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 48px; padding-top: 24px; } .sig-box { border-top: 1px solid #1a1a1a; padding-top: 8px; } .sig-box .role { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; } .sig-box .name { font-size: 14px; font-weight: 600; margin-top: 2px; } .footer { margin-top: 48px; text-align: center; font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 16px; } .att-badge { display: inline-block; margin-top: 4px; font-size: 10px; padding: 2px 6px; background: #effbf9; color: #024a42; border-radius: 2px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; } .receipt-page { page-break-before: always; max-width: 1000px; margin: 16px auto 0; background: white; padding: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); border-radius: 4px; } .receipt-page .receipt-header { font-size: 13px; font-weight: 600; color: #024a42; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #05a594; } .receipt-page .receipt-image { text-align: center; } .receipt-page .receipt-image img { max-width: 100%; max-height: 1100px; display: block; margin: 0 auto; } .receipt-page .receipt-pdf-card { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 56px 32px; background: #fafafa; border: 1px dashed #d1d5db; border-radius: 4px; margin: 32px auto; max-width: 480px; text-align: center; } .receipt-page .receipt-pdf-card .pdf-icon { color: #ef4444; } .receipt-page .receipt-pdf-card .pdf-filename { font-size: 16px; font-weight: 600; color: #1f2937; word-break: break-all; } .receipt-page .receipt-pdf-card .pdf-note { font-size: 12px; color: #6b7280; max-width: 340px; line-height: 1.5; } @media print { body { background: white; padding: 0; } .page, .receipt-page { box-shadow: none; padding: 24px; margin: 0 auto; } }</style></head><body><div class="page"><div class="header"><div class="header-left"><h1>Staff Claim</h1><div class="sub">' + escapeHTML(submittedBy) + ' - ' + formatMonth(month) + '</div></div><div class="header-date"><div class="label">Date of Submission</div><div class="value">' + formatDate(submissionDate) + '</div></div></div><table><thead><tr><th style="width:40px;">#</th><th style="width:90px;">Date</th><th>Vendor</th><th>Category</th><th>Description</th><th style="width:120px;">Amount (' + baseCurrency + ')</th></tr></thead><tbody>' + itemRows + '<tr class="totals-row"><td colspan="5">TOTAL</td><td>' + baseCurrency + ' ' + total.toFixed(2) + '</td></tr></tbody></table>' + rateDisclaimer + '<div class="signature-section"><div class="sig-box"><div class="role">Submitted By</div><div class="name">' + escapeHTML(submittedBy) + '</div></div><div class="sig-box"><div class="role">Approved By</div><div class="name">' + escapeHTML(approvedBy) + '</div></div></div><div class="footer">Generated on ' + new Date().toLocaleString('en-GB') + '</div></div>' + receiptSections + '</body></html>';
+  return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Expense Claim - ' + escapeHTML(submittedBy) + ' - ' + formatMonth(month) + '</title><style>* { box-sizing: border-box; margin: 0; padding: 0; } body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1a1a1a; background: white; padding: 32px 16px; line-height: 1.5; } .page { max-width: 1000px; margin: 0 auto; background: white; padding: 48px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); border-radius: 4px; } .header { border-bottom: 3px solid #05a594; padding-bottom: 20px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; } .header-left { flex: 1; min-width: 0; } .header h1 { font-size: 26px; color: #024a42; margin-bottom: 4px; } .header .sub { color: #666; font-size: 16px; font-weight: 600; } .header-date { text-align: right; flex-shrink: 0; } .header-date .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 2px; } .header-date .value { font-size: 14px; font-weight: 600; color: #1f2937; } table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px; } th { background: #024a42; color: white; padding: 10px 12px; text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; } th:first-child { border-top-left-radius: 3px; } th:last-child { border-top-right-radius: 3px; text-align: right; } td { padding: 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; } tr:nth-child(even) td { background: #fafafa; } td.amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; } td.foreign { font-size: 11px; color: #6b7280; } .category-tag { display: inline-block; padding: 2px 8px; background: #c9eee9; color: #024a42; border-radius: 2px; font-size: 11px; font-weight: 500; } .totals-row td { background: #024a42 !important; color: white; font-weight: 700; font-size: 15px; padding: 14px 12px; } .totals-row td:first-child { border-bottom-left-radius: 3px; } .totals-row td:last-child { border-bottom-right-radius: 3px; text-align: right; } .rate-disclaimer { margin: -8px 0 24px; padding: 14px 16px; background: #fafafa; border: 1px solid #e5e7eb; border-radius: 3px; font-size: 11px; color: #4b5563; } .rate-disclaimer-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #024a42; margin-bottom: 6px; } .rate-disclaimer ul { list-style: none; padding: 0; margin: 0 0 6px 0; } .rate-disclaimer li { padding: 2px 0; font-variant-numeric: tabular-nums; } .rate-disclaimer .rate-source { color: #9ca3af; font-style: italic; } .rate-disclaimer a { color: #05a594; text-decoration: none; } .rate-disclaimer a:hover { text-decoration: underline; } .rate-disclaimer .rate-note { font-size: 10px; color: #9ca3af; font-style: italic; margin-top: 4px; padding-top: 6px; border-top: 1px dashed #e5e7eb; } .signature-section { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 48px; padding-top: 24px; } .sig-box { border-top: 1px solid #1a1a1a; padding-top: 8px; } .sig-box .role { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; } .sig-box .name { font-size: 14px; font-weight: 600; margin-top: 2px; } .footer { margin-top: 48px; text-align: center; font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 16px; } .att-badge { display: inline-block; margin-top: 4px; font-size: 10px; padding: 2px 6px; background: #effbf9; color: #024a42; border-radius: 2px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; } .receipt-page { page-break-before: always; max-width: 1000px; margin: 16px auto 0; background: white; padding: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); border-radius: 4px; } .receipt-page .receipt-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 12px; margin-bottom: 18px; border-bottom: 2px solid #05a594; } .receipt-page .receipt-header-left { flex: 1; min-width: 0; } .receipt-page .receipt-num { font-size: 18px; font-weight: 700; color: #024a42; line-height: 1.2; margin-bottom: 3px; } .receipt-page .receipt-meta { font-size: 13px; color: #4b5563; font-weight: 500; word-break: break-word; } .receipt-page .receipt-form-amount { flex-shrink: 0; text-align: right; padding: 6px 12px; background: #effbf9; border-radius: 3px; min-width: 130px; } .receipt-page .receipt-form-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; font-weight: 600; line-height: 1.2; } .receipt-page .receipt-form-value { font-size: 15px; font-weight: 700; color: #024a42; font-variant-numeric: tabular-nums; line-height: 1.2; margin-top: 2px; } .receipt-page .receipt-image { text-align: center; } .receipt-page .receipt-image img { max-width: 100%; max-height: 1100px; display: block; margin: 0 auto; } .receipt-page .receipt-pdf-card { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 56px 32px; background: #fafafa; border: 1px dashed #d1d5db; border-radius: 4px; margin: 32px auto; max-width: 480px; text-align: center; } .receipt-page .receipt-pdf-card .pdf-icon { color: #ef4444; } .receipt-page .receipt-pdf-card .pdf-filename { font-size: 16px; font-weight: 600; color: #1f2937; word-break: break-all; } .receipt-page .receipt-pdf-card .pdf-note { font-size: 12px; color: #6b7280; max-width: 340px; line-height: 1.5; } @media print { body { background: white; padding: 0; } .page, .receipt-page { box-shadow: none; padding: 24px; margin: 0 auto; } }</style></head><body><div class="page"><div class="header"><div class="header-left"><h1>Staff Claim</h1><div class="sub">' + escapeHTML(submittedBy) + ' - ' + formatMonth(month) + '</div></div><div class="header-date"><div class="label">Date of Submission</div><div class="value">' + formatDate(submissionDate) + '</div></div></div><table><thead><tr><th style="width:40px;">#</th><th style="width:90px;">Date</th><th>Vendor</th><th>Category</th><th>Description</th><th style="width:120px;">Amount (' + baseCurrency + ')</th></tr></thead><tbody>' + itemRows + '<tr class="totals-row"><td colspan="5">TOTAL</td><td>' + baseCurrency + ' ' + total.toFixed(2) + '</td></tr></tbody></table>' + rateDisclaimer + '<div class="signature-section"><div class="sig-box"><div class="role">Submitted By</div><div class="name">' + escapeHTML(submittedBy) + '</div></div><div class="sig-box"><div class="role">Approved By</div><div class="name">' + escapeHTML(approvedBy) + '</div></div></div><div class="footer">Generated on ' + new Date().toLocaleString('en-GB') + '</div></div>' + receiptSections + '</body></html>';
 }
 
 function isMobileViewport() {
@@ -2383,12 +2609,54 @@ function closePreview() {
 }
 
 function downloadHTML() {
-  var html = buildOutputHTML();
-  var submittedBy = document.getElementById('submittedBy').value || 'claim';
-  var month = document.getElementById('claimMonth').value || '';
-  var safeName = ('Expense_Claim_' + submittedBy + '_' + month).replace(/[^a-z0-9_\-]/gi, '_');
-  downloadBlob(new Blob([html], { type: 'text/html' }), safeName + '.html');
-  showToast('HTML file downloaded');
+  var filename = downloadAndCacheEditableHtml();
+  if (filename) showToast('Editable HTML downloaded - opens in any browser');
+}
+
+// Build the editable HTML, cache the blob for re-download, and trigger the download.
+// Returns the filename on success or null on failure. Used by both the Preview-modal
+// "Download Editable HTML" button and the email flow (which downloads it alongside the PDF).
+function downloadAndCacheEditableHtml() {
+  var html = buildEditableHTML();
+  if (!html) return null;
+  var filename = buildClaimFilename().replace(/\.pdf$/i, '_editable.html');
+  var blob = new Blob([html], { type: 'text/html' });
+  cacheHtmlBlob(blob, filename);
+  downloadBlob(blob, filename);
+  return filename;
+}
+
+// Serialise the current form state and inject it into a copy of the app HTML.
+// The exported file is a self-contained editable claim: opening it loads the data
+// into the same app, banner shows it's a snapshot, edits are in-memory only,
+// re-exporting captures the latest state. Pre-existing snapshot scripts are
+// stripped so re-exports don't nest state.
+function buildEditableHTML() {
+  if (!APP_HTML_TEMPLATE) { showToast('Cannot generate editable HTML', true); return null; }
+  // Gather current state. Items already include attachments in memory.
+  var state = {
+    baseCurrency: baseCurrency,
+    claimMonth: document.getElementById('claimMonth').value,
+    submissionDate: document.getElementById('submissionDate').value,
+    submittedBy: document.getElementById('submittedBy').value,
+    approvedBy: document.getElementById('approvedBy').value,
+    items: items
+  };
+  // Escape <\/script in case any user input contains it - otherwise the script
+  // block would terminate early and break the export.
+  var stateJson = JSON.stringify(state).replace(/<\/script/gi, '<\\/script');
+  var stateScript = '<script data-snapshot-state>window.EMBEDDED_CLAIM_STATE = ' + stateJson + ';<\/script>\n';
+  // Strip any prior state script (so re-exports from an existing snapshot start clean).
+  // Anchored to line start (/m + ^) to avoid matching the JS string literal
+  // '<script data-snapshot-state>' inside this function's own source - that's mid-line
+  // in the source, whereas the actually-injected tag sits at column 0 of its own line.
+  var html = APP_HTML_TEMPLATE.replace(/^<script data-snapshot-state>[\s\S]*?<\/script>\n?/gm, '');
+  // Insert immediately before the main app script so EMBEDDED_CLAIM_STATE is
+  // available when the main script begins executing.
+  var mainScriptIdx = html.indexOf('<script>\n"use strict"');
+  if (mainScriptIdx === -1) mainScriptIdx = html.indexOf('<script>');
+  if (mainScriptIdx === -1) { showToast('Cannot find injection point', true); return null; }
+  return html.slice(0, mainScriptIdx) + stateScript + html.slice(mainScriptIdx);
 }
 
 function printPreview() {
@@ -2697,10 +2965,9 @@ function buildMailtoUrl(recipients) {
   var receiptCount = 0;
   for (var ri = 0; ri < items.length; ri++) receiptCount += (items[ri].attachments || []).length;
   var receiptLine = receiptCount > 0 ? ('\n- Receipts included in PDF: ' + receiptCount) : '';
-  var filename = buildClaimFilename();
   var subject = submittedBy + ': Total Claim: ' + baseCurrency + ' ' + totalStr + ' (' + monthLabel + ')';
   var body = 'Hi,\n\nPlease find my expense reimbursement claim for ' + monthLabel + ' attached.\n\nSummary:\n- Total claim: ' + baseCurrency + ' ' + totalStr + '\n- Number of ' + itemWord + ': ' + itemCount + receiptLine + '\n- Period: ' + monthLabel
-    + '\n\n🔴 [ATTACH: ' + filename + ' - delete this line after attaching the PDF] 🔴';
+    + '\n\n🔴 [REMINDER: Remember to include the 2 file attachments (PDF and HTML) - delete this line when done] 🔴';
 
   // Split recipients into To: and Cc: based on each contact's isCc flag
   var toList = [], ccList = [];
@@ -2734,11 +3001,17 @@ function confirmRecipients() {
     // If user closed the picker mid-generation, btn is detached - bail out
     if (!btn.parentNode) return;
 
-    // Rebuild the footer with: [attach reminder banner] + [Cancel] [Open Email anchor]
+    // Also generate and download the editable HTML so finance gets one file for quick
+    // amendments. Best-effort: if it fails we fall back to the original 2-step (PDF-only) flow.
+    var htmlFilename = downloadAndCacheEditableHtml();
+
+    // Rebuild the footer with: [PDF step] [HTML step] [Open Email step]
+    // (or [PDF step] [Open Email step] if HTML generation failed)
     var footer = btn.closest('.modal-footer');
     if (!footer) return;
     footer.classList.add('has-reminder');
-    footer.innerHTML =
+
+    var pdfStep =
       '<div class="claim-step" data-action="redownload-pdf" role="button" tabindex="-1">' +
         '<div class="claim-step-content">' +
           '<div class="claim-step-head">' +
@@ -2755,12 +3028,37 @@ function confirmRecipients() {
           '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
           '<span>Download</span>' +
         '</button>' +
-      '</div>' +
-      '<div class="claim-step">' +
+      '</div>';
+
+    var htmlStep = htmlFilename ?
+      '<div class="claim-step" data-action="redownload-html" role="button" tabindex="-1">' +
         '<div class="claim-step-content">' +
           '<div class="claim-step-head">' +
             '<span class="claim-step-num">2</span>' +
-            '<span class="claim-step-label">Open Email &amp; attach the PDF</span>' +
+            '<span class="claim-step-label"><span class="step-label-desktop">Editable HTML downloaded!</span><span class="step-label-mobile">Download Editable HTML</span></span>' +
+          '</div>' +
+          '<div class="claim-step-detail">' +
+            '<svg class="claim-step-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>' +
+            '<span>' + escapeHTML(htmlFilename) + '</span>' +
+          '</div>' +
+          '<div class="claim-step-desc">Finance will be able to make quick edits if required. Unless you want to make changes and resubmit, please attach this file in your email too.</div>' +
+          '<div class="claim-step-hint">Click here if the download did not happen</div>' +
+        '</div>' +
+        '<button type="button" class="claim-step-btn" data-action="redownload-html-btn">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
+          '<span>Download</span>' +
+        '</button>' +
+      '</div>' : '';
+
+    // Step number for the email step depends on whether HTML step is present
+    var emailStepNum = htmlFilename ? '3' : '2';
+    var emailStepLabel = htmlFilename ? 'Open Email &amp; attach the files' : 'Open Email &amp; attach the PDF';
+    var emailStep =
+      '<div class="claim-step">' +
+        '<div class="claim-step-content">' +
+          '<div class="claim-step-head">' +
+            '<span class="claim-step-num">' + emailStepNum + '</span>' +
+            '<span class="claim-step-label">' + emailStepLabel + '</span>' +
           '</div>' +
         '</div>' +
         '<a class="claim-step-btn" href="' + mailto + '" data-action="open-email-app">' +
@@ -2769,22 +3067,35 @@ function confirmRecipients() {
         '</a>' +
       '</div>';
 
+    footer.innerHTML = pdfStep + htmlStep + emailStep;
+
     // Wire up the action buttons in the new step cards
     var anchor = footer.querySelector('[data-action="open-email-app"]');
     if (anchor) anchor.addEventListener('click', function() {
-      // Reinforce the reminder right as they tap - sticky 12s error-style toast so it's hard to miss
-      showToast('Don\'t forget to attach ' + filename + ' to your email!', true);
+      // Reinforce the reminder right as they tap - sticky error-style toast so it's hard to miss
+      var reminderMsg = htmlFilename
+        ? 'Don\'t forget to attach ' + filename + ' and ' + htmlFilename + ' to your email!'
+        : 'Don\'t forget to attach ' + filename + ' to your email!';
+      showToast(reminderMsg, true);
       // Close the picker shortly after - the mailto navigation is already in flight by this point
       setTimeout(closeRecipientPicker, 500);
     });
-    // Re-download: button always works; whole reminder section is tappable on mobile too
-    var redownloadBtn = footer.querySelector('[data-action="redownload-pdf-btn"]');
-    if (redownloadBtn) redownloadBtn.addEventListener('click', function(e) {
-      e.stopPropagation(); // prevent the section's click handler from also firing
+    // PDF re-download: button always works; whole step section is tappable on mobile too
+    var redownloadPdfBtn = footer.querySelector('[data-action="redownload-pdf-btn"]');
+    if (redownloadPdfBtn) redownloadPdfBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
       redownloadCachedPdf();
     });
-    var reminderSection = footer.querySelector('[data-action="redownload-pdf"]');
-    if (reminderSection) reminderSection.addEventListener('click', redownloadCachedPdf);
+    var pdfStepSection = footer.querySelector('[data-action="redownload-pdf"]');
+    if (pdfStepSection) pdfStepSection.addEventListener('click', redownloadCachedPdf);
+    // HTML re-download (only present if HTML generation succeeded)
+    var redownloadHtmlBtn = footer.querySelector('[data-action="redownload-html-btn"]');
+    if (redownloadHtmlBtn) redownloadHtmlBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      redownloadCachedHtml();
+    });
+    var htmlStepSection = footer.querySelector('[data-action="redownload-html"]');
+    if (htmlStepSection) htmlStepSection.addEventListener('click', redownloadCachedHtml);
   }).catch(function(err) {
     if (!btn.parentNode) return;
     btn.disabled = false;
@@ -2899,7 +3210,135 @@ function downloadClaimPDF() {
 
 function emailClaim() {
   if (!validateForm()) return;
+  // In snapshot mode the file was opened by someone reviewing a claim (e.g. finance);
+  // they don't need the review-then-email flow, they just want the formal PDF.
+  if (SNAPSHOT_MODE) return downloadPdfDirect();
+  openReviewModal();
+}
+
+// Direct PDF download with button loading-state. Used by snapshot-mode viewers in place
+// of the full review->recipient->mailto flow. Mirrors printPreview's button feedback.
+function downloadPdfDirect() {
+  var btn = document.querySelector('[data-action="email-claim"]');
+  var orig = btn ? btn.innerHTML : null;
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('is-loading');
+    btn.innerHTML = '<span class="btn-spinner"></span><span>Generating...</span>';
+  }
+  showToast('Generating PDF...');
+  downloadClaimPDF().catch(function(err) {
+    showToast('Could not generate PDF: ' + (err && err.message ? err.message : 'unknown error'), true);
+  }).then(function() {
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('is-loading');
+      btn.innerHTML = orig;
+    }
+  });
+}
+
+// Pre-send review: shows each item's details side-by-side with its receipt thumbnails
+// so staff can visually verify the form amount matches what the receipt shows. The
+// flow is: emailClaim -> validate -> openReviewModal -> confirm -> openRecipientPicker.
+function openReviewModal() {
+  buildReviewContent();
+  document.getElementById('reviewClaimOverlay').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeReviewModal() {
+  document.getElementById('reviewClaimOverlay').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function confirmReview() {
+  closeReviewModal();
   openRecipientPicker();
+}
+
+function buildReviewContent() {
+  // Summary header: total + item/receipt counts
+  var total = 0;
+  var receiptCount = 0;
+  for (var i = 0; i < items.length; i++) {
+    total += getItemSGD(items[i]);
+    receiptCount += (items[i].attachments || []).length;
+  }
+  var summary = document.getElementById('reviewSummary');
+  summary.innerHTML = '<div><div class="review-summary-total">' + baseCurrency + ' ' + total.toFixed(2) + '</div></div>'
+    + '<div class="review-summary-meta">' + items.length + ' item' + (items.length === 1 ? '' : 's') + ' &middot; ' + receiptCount + ' receipt' + (receiptCount === 1 ? '' : 's') + ' attached</div>';
+
+  // Per-item cards
+  var html = '';
+  for (var idx = 0; idx < items.length; idx++) {
+    var item = items[idx];
+    var sgd = getItemSGD(item);
+    var atts = item.attachments || [];
+
+    // Build receipt thumbnails (or "no receipts" message)
+    var thumbsHtml;
+    if (atts.length === 0) {
+      thumbsHtml = '<div class="review-no-receipts">No receipts attached for this item</div>';
+    } else {
+      thumbsHtml = '<div class="review-thumb-grid">';
+      for (var a = 0; a < atts.length; a++) {
+        var att = atts[a];
+        if (att.type === 'application/pdf') {
+          var pdfName = att.name || 'PDF';
+          var truncated = pdfName.length > 12 ? (pdfName.slice(0, 12) + '…') : pdfName;
+          thumbsHtml += '<button type="button" class="review-thumb pdf-thumb" data-review-item-id="' + item.id + '" data-review-att-id="' + escapeHTML(att.id) + '" title="' + escapeHTML(pdfName) + '">'
+            + '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
+            + '<div class="pdf-name">' + escapeHTML(truncated) + '</div>'
+            + '</button>';
+        } else {
+          thumbsHtml += '<button type="button" class="review-thumb" data-review-item-id="' + item.id + '" data-review-att-id="' + escapeHTML(att.id) + '" title="' + escapeHTML(att.name || '') + '"><img src="' + att.dataUrl + '" alt=""></button>';
+        }
+      }
+      thumbsHtml += '</div>';
+    }
+
+    // Date + optional foreign-currency line
+    var dateStr = item.date ? formatDateDisplay(item.date) : '-';
+    var foreignLine = '';
+    if (item.currencyMode === 'foreign' && item.foreignCurrency && item.foreignAmount) {
+      var rate = parseFloat(item.manualRate) || item.autoRate || 0;
+      foreignLine = '<div class="review-detail-row"><div class="review-detail-label">Foreign</div><div class="review-detail-value">' + item.foreignCurrency + ' ' + parseFloat(item.foreignAmount).toFixed(2) + (rate ? ' @ ' + rate.toFixed(4) : '') + '</div></div>';
+    }
+
+    html += '<div class="review-item-card">'
+      + '<div class="review-item-header">'
+      +   '<span class="review-item-num">Item ' + (idx + 1) + '</span>'
+      +   '<span class="review-item-amount">' + baseCurrency + ' ' + sgd.toFixed(2) + '</span>'
+      + '</div>'
+      + '<div class="review-item-body">'
+      +   '<div class="review-item-details">'
+      +     '<div class="review-detail-row"><div class="review-detail-label">Vendor</div><div class="review-detail-value">' + (escapeHTML(item.vendor) || '-') + '</div></div>'
+      +     '<div class="review-detail-row"><div class="review-detail-label">Category</div><div class="review-detail-value">' + (escapeHTML(item.category) || '-') + '</div></div>'
+      +     '<div class="review-detail-row"><div class="review-detail-label">Description</div><div class="review-detail-value">' + (escapeHTML(item.description) || '-') + '</div></div>'
+      +     '<div class="review-detail-row"><div class="review-detail-label">Date</div><div class="review-detail-value">' + dateStr + '</div></div>'
+      +     foreignLine
+      +   '</div>'
+      +   '<div class="review-receipts">'
+      +     '<div class="review-receipts-label">Receipt' + (atts.length === 1 ? '' : 's') + (atts.length > 0 ? ' (' + atts.length + ')' : '') + '</div>'
+      +     thumbsHtml
+      +   '</div>'
+      + '</div>'
+      + '</div>';
+  }
+  document.getElementById('reviewItems').innerHTML = html;
+
+  // Wire thumbnail clicks - reuse the existing previewAttachment (lightbox for images,
+  // new-tab for PDFs). The handler reads the stable itemId/attId pair off the DOM
+  // rather than capturing array indices, so it survives item reordering.
+  var thumbs = document.querySelectorAll('[data-review-att-id]');
+  for (var t = 0; t < thumbs.length; t++) {
+    (function(thumb) {
+      thumb.addEventListener('click', function() {
+        previewAttachment(parseInt(thumb.dataset.reviewItemId, 10), thumb.dataset.reviewAttId);
+      });
+    })(thumbs[t]);
+  }
 }
 
 function showConfirm(message, onConfirm, opts) {
@@ -3002,6 +3441,10 @@ function init() {
   for (var r = 0; r < closeRecipientBtns.length; r++) closeRecipientBtns[r].addEventListener('click', closeRecipientPicker);
   document.querySelector('[data-action="confirm-recipients"]').addEventListener('click', confirmRecipients);
 
+  var closeReviewBtns = document.querySelectorAll('[data-action="close-review"]');
+  for (var rv = 0; rv < closeReviewBtns.length; rv++) closeReviewBtns[rv].addEventListener('click', closeReviewModal);
+  document.querySelector('[data-action="confirm-review"]').addEventListener('click', confirmReview);
+
   document.querySelector('[data-action="close-lightbox"]').addEventListener('click', closeImageLightbox);
   // Click the dark backdrop (but not the image) to dismiss
   document.getElementById('lightboxOverlay').addEventListener('click', function(e){
@@ -3009,12 +3452,20 @@ function init() {
   });
 
   document.addEventListener('keydown', function(e){
-    if (e.key === 'Escape') {
-      closePreview();
-      closeSettings();
-      closeRecipientPicker();
-      closeImageLightbox();
-    }
+    if (e.key !== 'Escape') return;
+    // Close topmost overlay only, by z-index. Stops after the first close so users
+    // can step back through stacked overlays one ESC at a time (e.g., close the
+    // lightbox without dismissing the review modal underneath it).
+    var lightbox = document.getElementById('lightboxOverlay');
+    if (lightbox && lightbox.classList.contains('active')) { closeImageLightbox(); return; }
+    var preview = document.getElementById('previewOverlay');
+    if (preview && preview.classList.contains('active')) { closePreview(); return; }
+    var review = document.getElementById('reviewClaimOverlay');
+    if (review && review.classList.contains('active')) { closeReviewModal(); return; }
+    var recipient = document.getElementById('recipientOverlay');
+    if (recipient && recipient.classList.contains('active')) { closeRecipientPicker(); return; }
+    var settings = document.getElementById('settingsOverlay');
+    if (settings && settings.classList.contains('active')) { closeSettings(); return; }
   });
   document.addEventListener('wheel', function(e){
     if (document.activeElement && document.activeElement.type === 'number') {
@@ -3095,44 +3546,97 @@ function init() {
     if (field) clearFieldError(field);
   }, true);
 
-  var restored = loadFormState();
-  if (restored && items.length > 0) {
-    var triggers = document.querySelectorAll('.date-picker');
-    for (var i = 0; i < triggers.length; i++) updatePickerDisplay(triggers[i]);
-    render();
-    showToast('Restored your previous draft');
-    // Receipts live in IndexedDB (too large for localStorage). Load them async and
-    // merge back into items - the form is already interactive; receipts appear as
-    // soon as the DB returns. If IDB is unavailable we just keep the empty arrays.
-    idbGetAllAttachments().then(function(records) {
-      if (!records || records.length === 0) return;
-      var byItem = {};
-      var validItemIds = {};
-      for (var k = 0; k < items.length; k++) validItemIds[items[k].id] = true;
-      var orphans = [];
-      for (var r = 0; r < records.length; r++) {
-        var rec = records[r];
-        if (validItemIds[rec.itemId]) {
-          if (!byItem[rec.itemId]) byItem[rec.itemId] = [];
-          byItem[rec.itemId].push({ id: rec.id, name: rec.name, type: rec.type, size: rec.size, dataUrl: rec.dataUrl });
-        } else {
-          orphans.push(rec.id);
-        }
-      }
-      for (var ii = 0; ii < items.length; ii++) {
-        if (byItem[items[ii].id]) items[ii].attachments = byItem[items[ii].id];
-      }
-      // Clean up any records pointing at items that no longer exist
-      for (var o = 0; o < orphans.length; o++) idbDeleteAttachment(orphans[o]).catch(function() {});
-      render();
-    }).catch(function() { /* IDB unavailable - leave attachments empty */ });
+  if (SNAPSHOT_MODE) {
+    // Came from an editable HTML export - load that state instead of localStorage.
+    // Marker class drives the banner CSS and any future snapshot-only styling.
+    document.documentElement.classList.add('snapshot-mode');
+    applyEmbeddedState(window.EMBEDDED_CLAIM_STATE);
+    updateSnapshotBanner(window.EMBEDDED_CLAIM_STATE);
   } else {
-    addItem();
+    var restored = loadFormState();
+    if (restored && items.length > 0) {
+      var triggers = document.querySelectorAll('.date-picker');
+      for (var i = 0; i < triggers.length; i++) updatePickerDisplay(triggers[i]);
+      render();
+      showToast('Restored your previous draft');
+      // Receipts live in IndexedDB (too large for localStorage). Load them async and
+      // merge back into items - the form is already interactive; receipts appear as
+      // soon as the DB returns. If IDB is unavailable we just keep the empty arrays.
+      idbGetAllAttachments().then(function(records) {
+        if (!records || records.length === 0) return;
+        var byItem = {};
+        var validItemIds = {};
+        for (var k = 0; k < items.length; k++) validItemIds[items[k].id] = true;
+        var orphans = [];
+        for (var r = 0; r < records.length; r++) {
+          var rec = records[r];
+          if (validItemIds[rec.itemId]) {
+            if (!byItem[rec.itemId]) byItem[rec.itemId] = [];
+            byItem[rec.itemId].push({ id: rec.id, name: rec.name, type: rec.type, size: rec.size, dataUrl: rec.dataUrl });
+          } else {
+            orphans.push(rec.id);
+          }
+        }
+        for (var ii = 0; ii < items.length; ii++) {
+          if (byItem[items[ii].id]) items[ii].attachments = byItem[items[ii].id];
+        }
+        // Clean up any records pointing at items that no longer exist
+        for (var o = 0; o < orphans.length; o++) idbDeleteAttachment(orphans[o]).catch(function() {});
+        render();
+      }).catch(function() { /* IDB unavailable - leave attachments empty */ });
+    } else {
+      addItem();
+    }
   }
 
-  // Show the Email Contacts coach mark on first visit only.
-  // Delayed so the form paints first; tooltip then animates in.
-  setTimeout(maybeShowEmailContactsTooltip, 600);
+  // Show the Email Contacts coach mark on first visit only. Skipped in snapshot
+  // mode - the viewer didn't open this app to set up contacts.
+  if (!SNAPSHOT_MODE) setTimeout(maybeShowEmailContactsTooltip, 600);
+}
+
+// Apply state from an editable-HTML export to the form. Mirrors loadFormState but
+// reads from the in-memory object instead of localStorage, and includes attachments
+// (which are baked into the export, unlike the localStorage path which strips them).
+function applyEmbeddedState(state) {
+  if (!state) return;
+  if (state.baseCurrency && ALL_CURRENCIES.indexOf(state.baseCurrency) !== -1) {
+    baseCurrency = state.baseCurrency;
+    var totalCurr = document.getElementById('totalCurrency');
+    if (totalCurr) totalCurr.textContent = baseCurrency;
+  }
+  if (state.claimMonth) document.getElementById('claimMonth').value = state.claimMonth;
+  if (state.submissionDate) document.getElementById('submissionDate').value = state.submissionDate;
+  if (state.submittedBy) document.getElementById('submittedBy').value = state.submittedBy;
+  if (state.approvedBy) document.getElementById('approvedBy').value = state.approvedBy;
+  if (Array.isArray(state.items) && state.items.length > 0) {
+    items = state.items;
+    // Ensure each item has an attachments array (might be missing if serialised oddly)
+    for (var i = 0; i < items.length; i++) {
+      if (!Array.isArray(items[i].attachments)) items[i].attachments = [];
+    }
+    itemCounter = items.reduce(function(m, it){ return Math.max(m, it.id || 0); }, 0);
+    expandedItemId = items[0].id;
+  }
+  var triggers = document.querySelectorAll('.date-picker');
+  for (var t = 0; t < triggers.length; t++) updatePickerDisplay(triggers[t]);
+  render();
+}
+
+// Populate the snapshot banner with who/when this claim is from.
+function updateSnapshotBanner(state) {
+  var who = document.getElementById('snapshotBannerWho');
+  if (!who) return;
+  var name = (state && state.submittedBy) ? state.submittedBy : 'Unknown';
+  var monthLabel = '';
+  if (state && state.claimMonth) {
+    var parts = state.claimMonth.split('-');
+    if (parts.length >= 2) {
+      try {
+        monthLabel = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+      } catch (e) {}
+    }
+  }
+  who.textContent = name + (monthLabel ? ' · ' + monthLabel : '');
 }
 
 // First-time onboarding tooltip pointing at the Email Contacts button.
