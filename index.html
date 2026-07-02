@@ -262,8 +262,11 @@
   .toast { background: var(--toast-bg); border: 1px solid var(--toast-border); border-left: 3px solid var(--primary); color: var(--toast-text); padding: 14px 14px 14px 16px; border-radius: 3px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 12px; min-width: 260px; max-width: 360px; pointer-events: auto; transform: translateX(calc(100% + 32px)); opacity: 0; transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s; }
   .toast.show { transform: translateX(0); opacity: 1; }
   .toast.error { border-left-color: var(--danger); }
+  /* Reminder: purple accent, bell icon. Not a success ("checkmark ✓" implies done), not an error (red conveys failure). */
+  .toast.reminder { border-left-color: #8b5cf6; }
   .toast .toast-icon { flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; background: var(--primary); font-size: 10px; }
   .toast.error .toast-icon { background: var(--danger); }
+  .toast.reminder .toast-icon { background: #8b5cf6; }
   .toast .toast-msg { flex: 1; line-height: 1.4; min-width: 0; }
   .toast .toast-close { background: transparent; border: none; color: rgba(232, 234, 236, 0.55); cursor: pointer; padding: 0; width: 22px; height: 22px; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit; }
   .toast .toast-close:hover { color: var(--toast-text); background: var(--toast-close-hover-bg); }
@@ -490,6 +493,69 @@
     transition: background 0.15s;
   }
   .claim-step-btn:hover { background: var(--primary-btn-hover); }
+
+  /* Step 3 variant: enables the copy section to wrap to its own row (flex-basis: 100% on
+     the copy section pushes it to a new line, giving it the full step width). */
+  .claim-step.step-with-copy { flex-wrap: wrap; }
+
+  /* Recipient picker has two states:
+     State 1 (default) — recipient checkboxes visible, Cancel/Next in footer
+     State 2 (.steps-mode) — checkboxes and footer hidden, steps container is the whole modal body */
+  .recipient-steps-container { display: none; flex-direction: column; gap: 10px; }
+  #recipientOverlay .modal.steps-mode #recipientList { display: none; }
+  #recipientOverlay .modal.steps-mode .recipient-steps-container { display: flex; }
+  #recipientOverlay .modal.steps-mode .modal-footer { display: none; }
+
+  /* Copy section: fallback path for users on webmail (Gmail, Outlook web) where mailto: doesn't
+     auto-compose. Labels sit above the fields; subject is single-line ellipsized, body is a
+     scrollable multi-line preview. Copy button uses the outline style (secondary to Open Email). */
+  .claim-step-copy-section {
+    flex-basis: 100%;
+    margin-top: 4px; padding-top: 12px;
+    border-top: 1px dashed var(--primary-dim);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .claim-step-copy-intro { color: var(--text-dim); font-size: 12px; line-height: 1.45; }
+  .claim-step-copy-row { display: flex; flex-direction: column; gap: 4px; }
+  .claim-step-copy-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .claim-step-copy-label {
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-dim);
+  }
+  .claim-step-copy-value {
+    padding: 8px 10px;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-size: 12px; color: var(--text);
+    line-height: 1.5;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    user-select: text; cursor: text;
+  }
+  .claim-step-copy-value.multiline {
+    white-space: pre-wrap; word-break: break-word;
+    overflow-y: auto; max-height: 108px;
+  }
+  .claim-step-copy-btn {
+    flex-shrink: 0;
+    padding: 5px 12px;
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 11px; font-weight: 600;
+    cursor: pointer;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    transition: background 0.15s, color 0.15s;
+    min-width: 72px; text-align: center;
+  }
+  @media (hover: hover) {
+    .claim-step-copy-btn:hover { background: rgba(5, 165, 148, 0.12); }
+  }
+  .claim-step-copy-btn.copied { background: var(--primary); color: #ffffff; }
+  .claim-step-copy-btn:disabled { cursor: default; }
   /* Step 1 on desktop: PDF auto-saves to Downloads folder, so no Download button needed and the
      label reads past tense. Mobile media query (below) re-enables the button and swaps the label. */
   .step-label-mobile { display: none; }
@@ -997,6 +1063,7 @@
     </div>
     <div class="modal-body">
       <div id="recipientList" class="picker-list"></div>
+      <div id="recipientStepsContainer" class="recipient-steps-container"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" data-action="close-recipients">Cancel</button>
@@ -1931,6 +1998,52 @@ function redownloadCachedHtml() {
   setTimeout(function() { try { document.body.removeChild(a); } catch (e) {} }, 100);
 }
 
+// Clipboard write with a fallback path for older browsers and non-secure contexts
+// (navigator.clipboard is only available on HTTPS or localhost). Returns a Promise.
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+    return navigator.clipboard.writeText(text);
+  }
+  return new Promise(function(resolve, reject) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '0';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) resolve(); else reject(new Error('Copy command returned false'));
+    } catch (e) {
+      try { document.body.removeChild(ta); } catch (_) {}
+      reject(e);
+    }
+  });
+}
+
+// Copy button UX: swap label to "Copied ✓" briefly, then restore. Disabled during the window
+// so a fast double-click can't stack timeouts and leave the button stuck in the "copied" state.
+function handleCopyClick(btn, text) {
+  copyToClipboard(text).then(function() {
+    var originalHtml = btn.innerHTML;
+    btn.innerHTML = 'Copied \u2713';
+    btn.classList.add('copied');
+    btn.disabled = true;
+    setTimeout(function() {
+      btn.innerHTML = originalHtml;
+      btn.classList.remove('copied');
+      btn.disabled = false;
+    }, 2000);
+  }).catch(function() {
+    showToast('Copy failed - please select and copy the text manually', true);
+  });
+}
+
 function render() {
   var list = document.getElementById('itemsList');
   var empty = document.getElementById('emptyState');
@@ -2860,6 +2973,15 @@ function openRecipientPicker() {
     return { email: c.email.trim(), isCc: !!c.isCc };
   });
   resetRecipientPickerFooter(); // ensure clean button state
+  // Reset modal to state 1 (in case a previous session ended in steps-mode)
+  var modal = document.querySelector('#recipientOverlay .modal');
+  if (modal) {
+    modal.classList.remove('steps-mode');
+    var modalH2 = modal.querySelector('.modal-header h2');
+    if (modalH2) modalH2.textContent = 'Send Email To';
+  }
+  var stepsContainer = document.getElementById('recipientStepsContainer');
+  if (stepsContainer) stepsContainer.innerHTML = '';
   renderRecipientList();
   document.getElementById('recipientOverlay').classList.add('active');
   document.body.style.overflow = 'hidden';
@@ -2980,7 +3102,7 @@ function buildMailtoUrl(recipients) {
   }
   var url = 'mailto:' + encodeURIComponent(toList.join(',')) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
   if (ccList.length > 0) url += '&cc=' + encodeURIComponent(ccList.join(','));
-  return url;
+  return { url: url, subject: subject, body: body };
 }
 
 // First tap: generate PDF, then swap the button to a real <a href="mailto:..."> for the user's second tap.
@@ -2990,7 +3112,7 @@ function confirmRecipients() {
   var btn = document.querySelector('[data-action="confirm-recipients"]');
   if (!btn || btn.disabled) return;
 
-  var mailto = buildMailtoUrl(selectedRecipients);
+  var emailContent = buildMailtoUrl(selectedRecipients);
 
   btn.disabled = true;
   btn.classList.add('is-loading');
@@ -3001,15 +3123,24 @@ function confirmRecipients() {
     // If user closed the picker mid-generation, btn is detached - bail out
     if (!btn.parentNode) return;
 
-    // Also generate and download the editable HTML so finance gets one file for quick
-    // amendments. Best-effort: if it fails we fall back to the original 2-step (PDF-only) flow.
-    var htmlFilename = downloadAndCacheEditableHtml();
+    // Second download (HTML) is triggered by the user's Step 2 click, not automatically.
+    // Chrome flags "multiple downloads" whenever ≥2 files come from the same original user
+    // gesture (the Next click), regardless of delay between them. The fix is to require a
+    // fresh user gesture — Chrome always allows downloads tied to a direct click.
+    var htmlFilename = null;
 
-    // Rebuild the footer with: [PDF step] [HTML step] [Open Email step]
-    // (or [PDF step] [Open Email step] if HTML generation failed)
-    var footer = btn.closest('.modal-footer');
-    if (!footer) return;
-    footer.classList.add('has-reminder');
+    // Rebuild the modal into "steps mode": populate the steps container with:
+    //   [PDF step - done] [HTML step - pending] [Open Email step]
+    // The .steps-mode class hides the recipient checkboxes and the Cancel/Next footer —
+    // both would be dead UI at this point since the selection has already been baked into
+    // the mailto URL and copy fields.
+    var stepsContainer = document.getElementById('recipientStepsContainer');
+    if (!stepsContainer) return;
+    var modal = stepsContainer.closest('.modal');
+
+    // Extracted icons - referenced in both the initial render and the post-download rebuild
+    var iconAttach = '<svg class="claim-step-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
+    var iconDownload = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>';
 
     var pdfStep =
       '<div class="claim-step" data-action="redownload-pdf" role="button" tabindex="-1">' +
@@ -3019,83 +3150,159 @@ function confirmRecipients() {
             '<span class="claim-step-label"><span class="step-label-desktop">PDF downloaded! 🎉</span><span class="step-label-mobile">Download PDF</span></span>' +
           '</div>' +
           '<div class="claim-step-detail">' +
-            '<svg class="claim-step-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>' +
+            iconAttach +
             '<span>' + escapeHTML(filename) + '</span>' +
           '</div>' +
           '<div class="claim-step-hint">Click here if the download did not happen</div>' +
         '</div>' +
         '<button type="button" class="claim-step-btn" data-action="redownload-pdf-btn">' +
-          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
+          iconDownload +
           '<span>Download</span>' +
         '</button>' +
       '</div>';
 
-    var htmlStep = htmlFilename ?
-      '<div class="claim-step" data-action="redownload-html" role="button" tabindex="-1">' +
-        '<div class="claim-step-content">' +
-          '<div class="claim-step-head">' +
-            '<span class="claim-step-num">2</span>' +
-            '<span class="claim-step-label"><span class="step-label-desktop">Editable HTML downloaded!</span><span class="step-label-mobile">Download Editable HTML</span></span>' +
-          '</div>' +
-          '<div class="claim-step-detail">' +
-            '<svg class="claim-step-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>' +
-            '<span>' + escapeHTML(htmlFilename) + '</span>' +
-          '</div>' +
-          '<div class="claim-step-desc">Finance will be able to make quick edits if required. Unless you want to make changes and resubmit, please attach this file in your email too.</div>' +
-          '<div class="claim-step-hint">Click here if the download did not happen</div>' +
-        '</div>' +
-        '<button type="button" class="claim-step-btn" data-action="redownload-html-btn">' +
-          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
-          '<span>Download</span>' +
-        '</button>' +
-      '</div>' : '';
-
-    // Step number for the email step depends on whether HTML step is present
-    var emailStepNum = htmlFilename ? '3' : '2';
-    var emailStepLabel = htmlFilename ? 'Open Email &amp; attach the files' : 'Open Email &amp; attach the PDF';
-    var emailStep =
+    // Step 2 renders in PENDING state - user must click Download to trigger HTML generation.
+    // Chrome permits this download because it's tied to a fresh user gesture (the click).
+    var htmlStep =
       '<div class="claim-step">' +
         '<div class="claim-step-content">' +
           '<div class="claim-step-head">' +
-            '<span class="claim-step-num">' + emailStepNum + '</span>' +
-            '<span class="claim-step-label">' + emailStepLabel + '</span>' +
+            '<span class="claim-step-num">2</span>' +
+            '<span class="claim-step-label">Download the editable HTML</span>' +
+          '</div>' +
+          '<div class="claim-step-desc">Finance will be able to make quick edits if required. Unless you want to make changes and resubmit, please attach this file in your email too.</div>' +
+        '</div>' +
+        '<button type="button" class="claim-step-btn" data-action="trigger-html-download">' +
+          iconDownload +
+          '<span>Download</span>' +
+        '</button>' +
+      '</div>';
+
+    var emailStep =
+      '<div class="claim-step step-with-copy">' +
+        '<div class="claim-step-content">' +
+          '<div class="claim-step-head">' +
+            '<span class="claim-step-num">3</span>' +
+            '<span class="claim-step-label">Open Email &amp; attach the files</span>' +
           '</div>' +
         '</div>' +
-        '<a class="claim-step-btn" href="' + mailto + '" data-action="open-email-app">' +
+        '<a class="claim-step-btn" href="' + emailContent.url + '" data-action="open-email-app">' +
           '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>' +
           '<span><span class="step-label-desktop">Open Email app</span><span class="step-label-mobile">Tap to open Email app</span></span>' +
         '</a>' +
+        '<div class="claim-step-copy-section">' +
+          '<div class="claim-step-copy-intro">Not using a native mail app? Copy the subject and body to paste elsewhere:</div>' +
+          '<div class="claim-step-copy-row">' +
+            '<div class="claim-step-copy-header">' +
+              '<span class="claim-step-copy-label">Subject</span>' +
+              '<button type="button" class="claim-step-copy-btn" data-action="copy-subject">Copy</button>' +
+            '</div>' +
+            '<div class="claim-step-copy-value" title="' + escapeHTML(emailContent.subject) + '">' + escapeHTML(emailContent.subject) + '</div>' +
+          '</div>' +
+          '<div class="claim-step-copy-row">' +
+            '<div class="claim-step-copy-header">' +
+              '<span class="claim-step-copy-label">Body</span>' +
+              '<button type="button" class="claim-step-copy-btn" data-action="copy-body">Copy</button>' +
+            '</div>' +
+            '<div class="claim-step-copy-value multiline">' + escapeHTML(emailContent.body) + '</div>' +
+          '</div>' +
+        '</div>' +
       '</div>';
 
-    footer.innerHTML = pdfStep + htmlStep + emailStep;
+    stepsContainer.innerHTML = pdfStep + htmlStep + emailStep;
+    // Transition to steps mode: hides the recipient list + Cancel/Next footer via CSS,
+    // reveals the steps container. Header text updates so it still reads correctly.
+    if (modal) {
+      modal.classList.add('steps-mode');
+      var modalHeading = modal.querySelector('.modal-header h2');
+      if (modalHeading) modalHeading.textContent = 'Almost done!';
+    }
+
+    // Helper: build Step 2's "downloaded" state HTML - used to replace the pending state
+    // after the user's first click on the Download button.
+    function buildHtmlStepDownloaded(downloadedName) {
+      return '<div class="claim-step" data-action="redownload-html" role="button" tabindex="-1">' +
+          '<div class="claim-step-content">' +
+            '<div class="claim-step-head">' +
+              '<span class="claim-step-num">2</span>' +
+              '<span class="claim-step-label"><span class="step-label-desktop">Editable HTML downloaded!</span><span class="step-label-mobile">Download Editable HTML</span></span>' +
+            '</div>' +
+            '<div class="claim-step-detail">' +
+              iconAttach +
+              '<span>' + escapeHTML(downloadedName) + '</span>' +
+            '</div>' +
+            '<div class="claim-step-desc">Finance will be able to make quick edits if required. Unless you want to make changes and resubmit, please attach this file in your email too.</div>' +
+            '<div class="claim-step-hint">Click here if the download did not happen</div>' +
+          '</div>' +
+          '<button type="button" class="claim-step-btn" data-action="redownload-html-btn">' +
+            iconDownload +
+            '<span>Download</span>' +
+          '</button>' +
+        '</div>';
+    }
+
+    // Helper: wire the redownload handlers on a "downloaded" state Step 2 (called after the swap)
+    function wireDownloadedHtmlStep(stepEl) {
+      var rBtn = stepEl.querySelector('[data-action="redownload-html-btn"]');
+      if (rBtn) rBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        redownloadCachedHtml();
+      });
+      stepEl.addEventListener('click', redownloadCachedHtml);
+    }
 
     // Wire up the action buttons in the new step cards
-    var anchor = footer.querySelector('[data-action="open-email-app"]');
+    var anchor = stepsContainer.querySelector('[data-action="open-email-app"]');
     if (anchor) anchor.addEventListener('click', function() {
-      // Reinforce the reminder right as they tap - sticky error-style toast so it's hard to miss
+      // Reinforce the reminder right as they tap. Message adapts to whether HTML has been
+      // downloaded yet - if the user skipped Step 2, we don't mention a file they don't have.
       var reminderMsg = htmlFilename
         ? 'Don\'t forget to attach ' + filename + ' and ' + htmlFilename + ' to your email!'
         : 'Don\'t forget to attach ' + filename + ' to your email!';
-      showToast(reminderMsg, true);
+      showToast(reminderMsg, 'reminder');
       // Close the picker shortly after - the mailto navigation is already in flight by this point
       setTimeout(closeRecipientPicker, 500);
     });
     // PDF re-download: button always works; whole step section is tappable on mobile too
-    var redownloadPdfBtn = footer.querySelector('[data-action="redownload-pdf-btn"]');
+    var redownloadPdfBtn = stepsContainer.querySelector('[data-action="redownload-pdf-btn"]');
     if (redownloadPdfBtn) redownloadPdfBtn.addEventListener('click', function(e) {
       e.stopPropagation();
       redownloadCachedPdf();
     });
-    var pdfStepSection = footer.querySelector('[data-action="redownload-pdf"]');
+    var pdfStepSection = stepsContainer.querySelector('[data-action="redownload-pdf"]');
     if (pdfStepSection) pdfStepSection.addEventListener('click', redownloadCachedPdf);
-    // HTML re-download (only present if HTML generation succeeded)
-    var redownloadHtmlBtn = footer.querySelector('[data-action="redownload-html-btn"]');
-    if (redownloadHtmlBtn) redownloadHtmlBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      redownloadCachedHtml();
+    // Step 2 initial state: user's click triggers HTML generation and download, then swaps
+    // the step to the "downloaded" state (with filename + re-download affordance).
+    var triggerHtmlBtn = stepsContainer.querySelector('[data-action="trigger-html-download"]');
+    if (triggerHtmlBtn) triggerHtmlBtn.addEventListener('click', function() {
+      var newFilename = downloadAndCacheEditableHtml();
+      if (!newFilename) {
+        showToast('Could not generate editable HTML', true);
+        return;
+      }
+      htmlFilename = newFilename; // closure - anchor's reminder message reads this
+      var pendingStep = this.closest('.claim-step');
+      if (pendingStep && pendingStep.parentNode) {
+        var wrap = document.createElement('div');
+        wrap.innerHTML = buildHtmlStepDownloaded(newFilename);
+        var newStep = wrap.firstChild;
+        pendingStep.parentNode.replaceChild(newStep, pendingStep);
+        wireDownloadedHtmlStep(newStep);
+      }
     });
-    var htmlStepSection = footer.querySelector('[data-action="redownload-html"]');
-    if (htmlStepSection) htmlStepSection.addEventListener('click', redownloadCachedHtml);
+    // Copy subject / body to clipboard: fallback path for users on webmail where mailto: doesn't
+    // auto-compose. Uses emailContent captured in this closure so the copied text is guaranteed
+    // to match what would have gone into the mailto: URL.
+    var copySubjectBtn = stepsContainer.querySelector('[data-action="copy-subject"]');
+    if (copySubjectBtn) copySubjectBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      handleCopyClick(this, emailContent.subject);
+    });
+    var copyBodyBtn = stepsContainer.querySelector('[data-action="copy-body"]');
+    if (copyBodyBtn) copyBodyBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      handleCopyClick(this, emailContent.body);
+    });
   }).catch(function(err) {
     if (!btn.parentNode) return;
     btn.disabled = false;
@@ -3389,20 +3596,30 @@ function resetForm() {
   }, { title: 'Reset Form?', confirmLabel: 'Reset', cancelLabel: 'Cancel' });
 }
 
-function showToast(msg, isError, duration) {
+function showToast(msg, variant, duration) {
   var container = document.getElementById('toastContainer');
   if (!container) return;
+  // Normalize variant: legacy `true` → 'error'; string variant is passed through.
+  var type = variant === true ? 'error' : (typeof variant === 'string' ? variant : '');
   var toast = document.createElement('div');
-  toast.className = 'toast' + (isError ? ' error' : '');
-  var iconSvg = isError
-    ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
-    : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  toast.className = 'toast' + (type ? ' ' + type : '');
+  var iconSvg;
+  if (type === 'error') {
+    iconSvg = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  } else if (type === 'reminder') {
+    // Bell icon signals "reminder / notification" without the finality of a checkmark
+    iconSvg = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
+  } else {
+    iconSvg = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  }
   toast.innerHTML = '<span class="toast-icon">' + iconSvg + '</span><span class="toast-msg">' + escapeHTML(msg) + '</span><button class="toast-close" type="button" aria-label="Dismiss"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
   container.appendChild(toast);
   requestAnimationFrame(function(){ requestAnimationFrame(function(){ toast.classList.add('show'); }); });
   var dismiss = function(){ toast.classList.remove('show'); setTimeout(function(){ toast.remove(); }, 300); };
   toast.querySelector('.toast-close').addEventListener('click', dismiss);
-  setTimeout(dismiss, duration || (isError ? 12000 : 4000));
+  // Reminders stay visible as long as errors do (user is likely switching apps to fulfill the reminder)
+  var defaultDuration = (type === 'error' || type === 'reminder') ? 12000 : 4000;
+  setTimeout(dismiss, duration || defaultDuration);
 }
 
 function init() {
