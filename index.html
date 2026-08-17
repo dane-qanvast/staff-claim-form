@@ -3260,8 +3260,9 @@ function confirmRecipients() {
         ? 'Don\'t forget to attach ' + filename + ' and ' + htmlFilename + ' to your email!'
         : 'Don\'t forget to attach ' + filename + ' to your email!';
       showToast(reminderMsg, 'reminder');
-      // Close the picker shortly after - the mailto navigation is already in flight by this point
-      setTimeout(closeRecipientPicker, 500);
+      // Modal stays open - user closes it manually with the X. They may want to come back
+      // to copy the subject/body, re-download a file, or retry Open Email if the mailto
+      // handler didn't fire correctly the first time.
     });
     // PDF re-download: button always works; whole step section is tappable on mobile too
     var redownloadPdfBtn = stepsContainer.querySelector('[data-action="redownload-pdf-btn"]');
